@@ -272,13 +272,16 @@ export default function MarketplacePage() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
-              JudgeAI
+              jury box
             </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
             <Link href="/marketplace" className="text-sm text-brand-purple font-medium">
               Marketplace
+            </Link>
+            <Link href="/create-agent" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
+              Create Agent
             </Link>
             <Link href="/dashboard" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
               Dashboard
@@ -292,8 +295,8 @@ export default function MarketplacePage() {
             <Button variant="ghost" size="sm">
               Sign In
             </Button>
-            <Button size="sm" className="bg-brand-purple hover:bg-brand-purple/90">
-              Get Started
+            <Button size="sm" className="bg-brand-purple hover:bg-brand-purple/90" asChild>
+              <Link href="/create-agent">Create Agent</Link>
             </Button>
           </div>
         </div>

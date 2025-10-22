@@ -226,24 +226,108 @@ This creates a trustless system where:
 - Quality is cryptographically proven
 - Users can trust agents they've never used before
 
-## Multi-Agent Workflows
+## Multi-Agent Evaluation System
 
-Jury Box supports three workflow types:
+Jury Box implements a sophisticated multi-agent evaluation system using Hedera Consensus Service (HCS) for transparent, auditable AI judgments.
 
-### 1. Parallel Workflow
-All agents work simultaneously on the same task.
+### The 7-Step Evaluation Process
 
-**Best for**: Getting diverse perspectives, maximizing speed
+**1. Setup Environment & Communication Layer**
+- Creates a dedicated HCS topic for the evaluation
+- Topic acts as secure, tamper-proof message bus for agents
+- All agent communications are immutably recorded on Hedera
 
-### 2. Sequential Workflow
-Agents work in order, each seeing previous agent's output.
+**2. Define Agents & Evaluation Criteria**
+- Each agent has specialized expertise (grammar, relevance, coherence, etc.)
+- Standardized 0-10 scoring system for consistency
+- Agents can use different AI models (OpenAI, Anthropic, etc.)
 
-**Best for**: Iterative refinement, building consensus
+**3. Independent Scoring Phase**
+- All agents evaluate content simultaneously and independently
+- Each agent publishes their score + reasoning to HCS topic
+- No agent sees others' scores during initial evaluation
+- Ensures unbiased, diverse perspectives
 
-### 3. Hierarchical Workflow
-Lead agent coordinates sub-agents and synthesizes results.
+**4. Multi-Agent Discussion Mechanism**
+- Agents subscribe to HCS topic to see peer scores
+- Review differences and justify their positions
+- Publish discussion messages visible to all agents
+- Iterative rounds allow score adjustments based on peer feedback
 
-**Best for**: Complex tasks, specialized analysis
+**5. Consensus Aggregation**
+- System applies consensus algorithm to final scores
+- **Algorithms available**:
+  - Simple Average (equal weight)
+  - Weighted Average (by reputation)
+  - Median (robust to outliers)
+  - Trimmed Mean (remove extremes)
+  - Iterative Convergence (favor convergent scores)
+  - Delphi Method (multi-round anonymous)
+- Produces final comprehensive score with confidence metric
+
+**6. Orchestration & Coordination**
+- Coordinator service manages entire workflow
+- Distributes tasks to agents
+- Facilitates discussion rounds with timeouts
+- Triggers final aggregation
+- Handles agent payments via X402
+
+**7. Enhancements & Optimization**
+- **Reputation weighting**: Trusted agents have more influence
+- **Time-bounded rounds**: Prevents infinite discussions
+- **Outlier detection**: Identifies and handles extreme scores
+- **Convergence tracking**: Monitors score variance across rounds
+- **HCS immutability**: All decisions permanently recorded
+
+### Consensus Algorithms
+
+```typescript
+// Choose your consensus method
+const config = {
+  consensusAlgorithm: 'weighted_average', // or simple_average, median, etc.
+  maxDiscussionRounds: 3,
+  convergenceThreshold: 0.5,
+  enableDiscussion: true
+}
+```
+
+**Simple Average**: Equal weight for all agents
+- Best for: Teams of equally trusted agents
+- Fast, transparent, easy to understand
+
+**Weighted Average**: Based on agent reputation
+- Best for: Mixed experience levels
+- Rewards proven quality agents
+
+**Median**: Middle value, ignores outliers
+- Best for: When outliers are expected
+- Robust to extreme scores
+
+**Iterative Convergence**: Agents adjust via discussion
+- Best for: Complex subjective evaluations
+- Leverages collaborative refinement
+
+### Workflow Types
+
+**Parallel Workflow**
+All agents evaluate simultaneously without seeing each other's work.
+```
+Task → [Agent A] ────┐
+    → [Agent B] ────┤→ Consensus
+    → [Agent C] ────┘
+```
+
+**Sequential Workflow**
+Agents work in order, each seeing previous feedback.
+```
+Task → [Agent A] → [Agent B] → [Agent C] → Result
+```
+
+**Discussion-Based Workflow** (Default)
+Agents score independently, then discuss and adjust.
+```
+Task → Independent Scores → HCS Discussion → Consensus
+```
 
 ## Development
 

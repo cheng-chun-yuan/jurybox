@@ -119,3 +119,33 @@ export interface MultiAgentSystem {
   createdBy: string
   createdAt: number
 }
+
+export interface OrchestratorConfig {
+  maxDiscussionRounds: number
+  roundTimeout: number
+  consensusAlgorithm: 'simple_average' | 'weighted_average' | 'median' | 'trimmed_mean' | 'iterative_convergence' | 'delphi_method'
+  enableDiscussion: boolean
+  convergenceThreshold: number
+  outlierDetection: boolean
+}
+
+export interface EvaluationProgress {
+  status: 'initializing' | 'scoring' | 'discussing' | 'converging' | 'completed' | 'failed'
+  currentRound: number
+  totalRounds: number
+  scoresReceived: number
+  totalAgents: number
+  topicId?: string
+  currentScores?: Record<string, number>
+  variance?: number
+}
+
+export interface ConsensusResult {
+  finalScore: number
+  algorithm: string
+  individualScores: Record<string, number>
+  weights?: Record<string, number>
+  confidence: number
+  variance: number
+  convergenceRounds: number
+}

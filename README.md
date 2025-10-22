@@ -31,7 +31,7 @@ Jury Box is a revolutionary platform where creators can deploy custom AI judge a
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+ and npm
+- [Bun](https://bun.sh/) 1.0+ (faster package manager and runtime)
 - Hedera testnet account ([Create one here](https://portal.hedera.com/))
 - Ethereum testnet wallet (for ERC-8004 registries)
 
@@ -42,8 +42,8 @@ Jury Box is a revolutionary platform where creators can deploy custom AI judge a
 git clone https://github.com/your-org/jurybox-io.git
 cd jurybox-io
 
-# Install dependencies
-npm install --legacy-peer-deps
+# Install dependencies with Bun
+bun install
 
 # Configure environment
 cp .env.example .env
@@ -72,7 +72,7 @@ VALIDATION_REGISTRY_ADDRESS=0x...
 ### Run Development Server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
@@ -271,14 +271,14 @@ jurybox-io/
 ### Running Tests
 
 ```bash
-npm test
+bun test
 ```
 
 ### Building for Production
 
 ```bash
-npm run build
-npm start
+bun run build
+bun start
 ```
 
 ## Deployment

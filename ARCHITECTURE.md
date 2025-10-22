@@ -295,10 +295,10 @@ interface PaymentRequest {
 
 ### Development
 ```bash
-npm install --legacy-peer-deps
+bun install
 cp .env.example .env
 # Fill in your Hedera and Ethereum credentials
-npm run dev
+bun run dev
 ```
 
 ### Production

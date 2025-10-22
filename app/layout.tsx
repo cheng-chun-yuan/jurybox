@@ -20,7 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "JudgeAI - Get Expert AI Judgments",
+  title: "jury box",
   description: "Select expert AI judges to evaluate your content and get detailed feedback",
   generator: "v0.app",
 }

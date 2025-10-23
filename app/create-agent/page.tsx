@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,14 +14,23 @@ import { Sparkles, ArrowLeft, Plus, X, Loader2 } from "lucide-react"
 export default function CreateAgentPage() {
   const router = useRouter()
   const [isCreating, setIsCreating] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [specialties, setSpecialties] = useState<string[]>([])
   const [specialtyInput, setSpecialtyInput] = useState("")
+  const [imagePreviewUrl, setImagePreviewUrl] = useState("")
+  const [registrationResult, setRegistrationResult] = useState<{
+    agentId: string
+    cid: string
+    ipfsUri: string
+    txHash: string
+  } | null>(null)
 
   const [formData, setFormData] = useState({
     name: "",
     title: "",
     tagline: "",
     bio: "",
+    image: "",
     color: "purple" as "purple" | "cyan" | "gold",
     pricePerJudgment: 25,
     modelProvider: "openai" as "openai" | "anthropic" | "groq" | "ollama",
@@ -29,6 +38,20 @@ export default function CreateAgentPage() {
     systemPrompt: "",
     temperature: 0.7,
   })
+
+  // Debounce image preview updates to avoid making requests on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only update preview if the URL looks complete (basic validation)
+      if (formData.image && (formData.image.startsWith('http://') || formData.image.startsWith('https://'))) {
+        setImagePreviewUrl(formData.image)
+      } else if (!formData.image) {
+        setImagePreviewUrl("")
+      }
+    }, 800) // Wait 800ms after user stops typing
+
+    return () => clearTimeout(timer)
+  }, [formData.image])
 
   const handleAddSpecialty = () => {
     if (specialtyInput.trim() && !specialties.includes(specialtyInput.trim())) {
@@ -41,28 +64,88 @@ export default function CreateAgentPage() {
     setSpecialties(specialties.filter((s) => s !== specialty))
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingImage(true)
+    try {
+      const uploadFormData = new FormData()
+      uploadFormData.append("file", file)
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: uploadFormData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Upload failed")
+      }
+
+      // Use the gateway URL for the image
+      setFormData({ ...formData, image: data.gatewayUrl })
+      setImagePreviewUrl(data.gatewayUrl) // Set preview immediately after upload
+      alert(`Image uploaded to IPFS!\n\n${data.ipfsUri}`)
+    } catch (error: any) {
+      console.error("Image upload error:", error)
+      alert(`Failed to upload image: ${error.message}`)
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsCreating(true)
 
     try {
-      // In production, this would call API to:
-      // 1. Create Hedera account for agent
-      // 2. Register agent in ERC-8004 Identity Registry
-      // 3. Set up X402 payment configuration
-      // 4. Store agent data in database
+      console.log("Creating agent with ERC-8004 registration...")
 
-      console.log("Creating agent with Hedera integration...")
-      console.log("Form data:", { ...formData, specialties })
+      // Call API to register agent on-chain
+      const response = await fetch("/api/agents/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.bio,
+          image: formData.image || undefined,
+          specialties,
+          modelProvider: formData.modelProvider,
+          modelName: formData.modelName,
+          systemPrompt: formData.systemPrompt,
+          temperature: formData.temperature,
+          pricePerJudgment: formData.pricePerJudgment,
+        }),
+      })
 
-      // Simulate agent creation
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const data = await response.json()
 
-      // Redirect to marketplace
-      router.push("/marketplace")
-    } catch (error) {
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to register agent")
+      }
+
+      console.log("✅ Agent registered successfully!")
+      console.log("Agent ID:", data.agent.agentId)
+      console.log("IPFS URI:", data.agent.ipfsUri)
+      console.log("TX Hash:", data.agent.txHash)
+
+      // Extract CID from IPFS URI (ipfs://CID)
+      const cid = data.agent.ipfsUri?.replace('ipfs://', '') || 'N/A'
+
+      // Store registration result to display below form
+      setRegistrationResult({
+        agentId: data.agent.agentId,
+        cid,
+        ipfsUri: data.agent.ipfsUri,
+        txHash: data.agent.txHash,
+      })
+    } catch (error: any) {
       console.error("Error creating agent:", error)
-      alert("Failed to create agent. Please try again.")
+      alert(`Failed to create agent: ${error.message}`)
     } finally {
       setIsCreating(false)
     }
@@ -150,15 +233,60 @@ export default function CreateAgentPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="bio">Biography</Label>
+                  <Label htmlFor="bio">Biography / Description</Label>
                   <Textarea
                     id="bio"
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    placeholder="Describe your agent's background and expertise..."
+                    placeholder="Describe your agent's background, expertise, and evaluation approach..."
                     rows={4}
                     required
                   />
+                  <p className="text-xs text-foreground/60 mt-1">
+                    This will be stored on IPFS and used in the ERC-8004 metadata
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="image">Agent Image (optional)</Label>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        id="image"
+                        value={formData.image}
+                        onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                        placeholder="https://example.com/agent-avatar.png or upload below"
+                        type="url"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={isUploadingImage}
+                        className="flex-1"
+                      />
+                      {isUploadingImage && (
+                        <Loader2 className="w-4 h-4 animate-spin text-brand-purple" />
+                      )}
+                    </div>
+                    {imagePreviewUrl && (
+                      <div className="p-2 bg-surface-2 rounded border border-border/50">
+                        <img
+                          src={imagePreviewUrl}
+                          alt="Agent preview"
+                          className="w-20 h-20 rounded object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://via.placeholder.com/80?text=Invalid"
+                          }}
+                        />
+                      </div>
+                    )}
+                    <p className="text-xs text-foreground/60">
+                      Upload image to IPFS or provide public URL (ERC-8004 standard)
+                    </p>
+                  </div>
                 </div>
 
                 <div>
@@ -313,11 +441,13 @@ export default function CreateAgentPage() {
 
                 <div className="p-4 bg-brand-cyan/10 border border-brand-cyan/30 rounded-lg">
                   <p className="text-sm text-foreground/80">
-                    <strong>Blockchain Integration:</strong>
-                    <br />• Hedera account will be created automatically
-                    <br />• Agent registered in ERC-8004 Identity Registry
-                    <br />• X402 payment protocol enabled for A2A transactions
-                    <br />• Reputation tracked on-chain via ERC-8004
+                    <strong>ERC-8004 & Blockchain Integration:</strong>
+                    <br />• Metadata uploaded to IPFS (Pinata)
+                    <br />• Agent registered in ERC-8004 Identity Registry on Hedera
+                    <br />• A2A endpoint for agent-to-agent communication
+                    <br />• Agent wallet (CAIP-10) for payments
+                    <br />• On-chain reputation tracking
+                    <br />• X402 payment protocol for A2A transactions
                   </p>
                 </div>
               </div>
@@ -353,6 +483,34 @@ export default function CreateAgentPage() {
               </Button>
             </div>
           </form>
+
+          {/* Registration Result */}
+          {registrationResult && (
+            <Card className="p-6 mt-8 bg-brand-cyan/10 border-brand-cyan/30">
+              <h2 className="text-2xl font-bold mb-4 text-brand-cyan">✅ Agent Registered Successfully!</h2>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-foreground/70">Agent ID</Label>
+                  <p className="text-lg font-mono">{registrationResult.agentId}</p>
+                </div>
+                <div>
+                  <Label className="text-foreground/70">IPFS CID</Label>
+                  <p className="text-lg font-mono break-all">{registrationResult.cid}</p>
+                </div>
+                <div>
+                  <Label className="text-foreground/70">IPFS URI</Label>
+                  <p className="text-sm font-mono break-all text-foreground/80">{registrationResult.ipfsUri}</p>
+                </div>
+                <div>
+                  <Label className="text-foreground/70">Transaction Hash</Label>
+                  <p className="text-sm font-mono break-all text-foreground/80">{registrationResult.txHash}</p>
+                </div>
+                <Button onClick={() => router.push("/marketplace")} className="w-full mt-4">
+                  Go to Marketplace
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       </section>
     </div>

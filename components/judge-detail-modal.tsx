@@ -31,9 +31,10 @@ interface JudgeDetailModalProps {
   open: boolean
   onClose: () => void
   onSelect?: (judgeId: number) => void
+  selected?: boolean
 }
 
-export function JudgeDetailModal({ judge, open, onClose, onSelect }: JudgeDetailModalProps) {
+export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: JudgeDetailModalProps) {
   if (!judge) return null
 
   const colorClasses = {
@@ -67,7 +68,10 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect }: JudgeDetail
                 <span className="text-xl font-mono font-bold">{judge.rating}</span>
                 <span className="text-sm text-foreground/60">({judge.reviews} reviews)</span>
               </div>
-              <div className="text-2xl font-mono font-bold text-brand-gold">${judge.price}</div>
+              <div>
+                <span className="text-2xl font-mono font-bold text-brand-gold">${judge.price}</span>
+                <span className="text-sm text-foreground/60 ml-1">/ judgment</span>
+              </div>
             </div>
           </div>
         </div>
@@ -142,8 +146,12 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect }: JudgeDetail
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 pt-4 border-t border-border/50">
-          <Button className="flex-1 bg-brand-purple hover:bg-brand-purple/90" onClick={() => onSelect?.(judge.id)}>
-            Select Judge
+          <Button
+            className="flex-1 bg-brand-purple hover:bg-brand-purple/90"
+            onClick={() => onSelect?.(judge.id)}
+            variant={selected ? "outline" : "default"}
+          >
+            {selected ? "Selected" : "Select Judge"}
           </Button>
           <Button variant="outline" onClick={onClose}>
             Close

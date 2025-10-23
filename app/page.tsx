@@ -15,7 +15,7 @@ export default function LandingPage() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
-              jury box
+              JuryBox
             </span>
           </div>
 
@@ -25,9 +25,6 @@ export default function LandingPage() {
             </Link>
             <Link href="/dashboard" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
               Dashboard
-            </Link>
-            <Link href="/how-it-works" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
-              How It Works
             </Link>
           </div>
 
@@ -149,7 +146,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold">jury box</span>
+                <span className="text-xl font-bold">JuryBox</span>
               </div>
               <p className="text-sm text-foreground/60">Expert AI judgments for your content</p>
             </div>
@@ -201,7 +198,7 @@ export default function LandingPage() {
           </div>
 
           <div className="border-t border-border/50 mt-8 pt-8 text-center text-sm text-foreground/60">
-            © 2025 jury box. All rights reserved.
+            © 2025 JuryBox. All rights reserved.
           </div>
         </div>
       </footer>

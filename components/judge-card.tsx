@@ -18,11 +18,12 @@ interface JudgeCardProps {
     avatar: string
     trending?: boolean
   }
-  onSelect?: (judgeId: number) => void
+  onSelect?: (e: React.MouseEvent) => void
+  onViewDetails?: (e: React.MouseEvent) => void
   selected?: boolean
 }
 
-export function JudgeCard({ judge, onSelect, selected }: JudgeCardProps) {
+export function JudgeCard({ judge, onSelect, onViewDetails, selected }: JudgeCardProps) {
   const colorClasses = {
     purple: {
       border: "border-brand-purple/30 hover:border-brand-purple",
@@ -95,19 +96,31 @@ export function JudgeCard({ judge, onSelect, selected }: JudgeCardProps) {
         </div>
 
         {/* Price & CTA */}
-        <div className="flex items-center justify-between pt-4 border-t border-border/50">
-          <div>
-            <span className="text-2xl font-mono font-bold text-brand-gold">${judge.price}</span>
-            <span className="text-sm text-foreground/60 ml-1">/ judgment</span>
+        <div className="pt-4 border-t border-border/50 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-2xl font-mono font-bold text-brand-gold">${judge.price}</span>
+              <span className="text-sm text-foreground/60 ml-1">/ judgment</span>
+            </div>
           </div>
-          <Button
-            size="sm"
-            className={colors.bg}
-            onClick={() => onSelect?.(judge.id)}
-            variant={selected ? "outline" : "default"}
-          >
-            {selected ? "Selected" : "Select"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={(e) => onViewDetails?.(e)}
+            >
+              View Details
+            </Button>
+            <Button
+              size="sm"
+              className={`flex-1 ${colors.bg}`}
+              onClick={(e) => onSelect?.(e)}
+              variant={selected ? "outline" : "default"}
+            >
+              {selected ? "Selected" : "Select"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

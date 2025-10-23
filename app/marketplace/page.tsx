@@ -20,7 +20,7 @@ const allJudges = [
     tagline: "Rigorous analysis meets clarity",
     rating: 9.8,
     reviews: 342,
-    price: 25,
+    price: 0.025,
     specialties: ["Research", "Academic", "Analysis"],
     color: "purple" as const,
     avatar: "/professional-academic-avatar.jpg",
@@ -59,7 +59,7 @@ const allJudges = [
     tagline: "Where art meets innovation",
     rating: 9.5,
     reviews: 289,
-    price: 30,
+    price: 0.03,
     specialties: ["Design", "Creative", "UX"],
     color: "cyan" as const,
     avatar: "/creative-designer-avatar.png",
@@ -98,7 +98,7 @@ const allJudges = [
     tagline: "Clean code, better systems",
     rating: 9.7,
     reviews: 412,
-    price: 35,
+    price: 0.035,
     specialties: ["Code", "Architecture", "Performance"],
     color: "gold" as const,
     avatar: "/tech-expert-avatar.png",
@@ -136,7 +136,7 @@ const allJudges = [
     tagline: "Data-driven insights for growth",
     rating: 9.4,
     reviews: 198,
-    price: 28,
+    price: 0.028,
     specialties: ["Business", "Strategy", "Marketing"],
     color: "purple" as const,
     avatar: "/business-strategist-avatar.jpg",
@@ -164,7 +164,7 @@ const allJudges = [
     tagline: "Words that resonate and convert",
     rating: 9.6,
     reviews: 267,
-    price: 22,
+    price: 0.022,
     specialties: ["Writing", "Content", "Copywriting"],
     color: "cyan" as const,
     avatar: "/content-writer-avatar.jpg",
@@ -196,7 +196,7 @@ const allJudges = [
     tagline: "Turning data into decisions",
     rating: 9.3,
     reviews: 156,
-    price: 32,
+    price: 0.032,
     specialties: ["Data", "Analytics", "ML"],
     color: "gold" as const,
     avatar: "/data-scientist-avatar.jpg",
@@ -272,7 +272,7 @@ export default function MarketplacePage() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
-              jury box
+              JuryBox
             </span>
           </Link>
 
@@ -280,14 +280,8 @@ export default function MarketplacePage() {
             <Link href="/marketplace" className="text-sm text-brand-purple font-medium">
               Marketplace
             </Link>
-            <Link href="/create-agent" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
-              Create Agent
-            </Link>
             <Link href="/dashboard" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
               Dashboard
-            </Link>
-            <Link href="/how-it-works" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
-              How It Works
             </Link>
           </div>
 
@@ -377,13 +371,19 @@ export default function MarketplacePage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredJudges.map((judge) => (
-              <div key={judge.id} onClick={() => setDetailJudge(judge)} className="cursor-pointer">
-                <JudgeCard
-                  judge={judge}
-                  onSelect={handleSelectJudge}
-                  selected={selectedJudges.some((j) => j.id === judge.id)}
-                />
-              </div>
+              <JudgeCard
+                key={judge.id}
+                judge={judge}
+                onSelect={(e: React.MouseEvent) => {
+                  e.stopPropagation()
+                  handleSelectJudge(judge.id)
+                }}
+                onViewDetails={(e: React.MouseEvent) => {
+                  e.stopPropagation()
+                  setDetailJudge(judge)
+                }}
+                selected={selectedJudges.some((j) => j.id === judge.id)}
+              />
             ))}
           </div>
         )}
@@ -395,6 +395,7 @@ export default function MarketplacePage() {
         open={!!detailJudge}
         onClose={() => setDetailJudge(null)}
         onSelect={handleSelectJudge}
+        selected={detailJudge ? selectedJudges.some((j) => j.id === detailJudge.id) : false}
       />
 
       {/* Judge Selector */}

@@ -11,37 +11,62 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 const steps = [
-  { id: 1, name: "Content", icon: Upload },
+  { id: 1, name: "Judges", icon: Sparkles },
   { id: 2, name: "Criteria", icon: FileText },
-  { id: 3, name: "Review", icon: CheckCircle2 },
+  { id: 3, name: "Test", icon: Upload },
+  { id: 4, name: "Review", icon: CheckCircle2 },
 ]
 
 export default function SubmitPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    contentType: "text",
+    systemName: "",
+    description: "",
     criteria: "",
     additionalNotes: "",
+    testContent: "",
   })
+  const [isTestingResults, setIsTestingResults] = useState(false)
+  const [testResults, setTestResults] = useState<any>(null)
 
   // Mock selected judges (in real app, would come from state management)
   const selectedJudges = [
-    { id: 1, name: "Dr. Academic", price: 25, avatar: "/professional-academic-avatar.jpg" },
-    { id: 2, name: "Creative Maven", price: 30, avatar: "/creative-designer-avatar.png" },
+    { id: 1, name: "Dr. Academic", price: 0.025, avatar: "/professional-academic-avatar.jpg" },
+    { id: 2, name: "Creative Maven", price: 0.03, avatar: "/creative-designer-avatar.png" },
   ]
 
   const totalCost = selectedJudges.reduce((sum, judge) => sum + judge.price, 0)
 
   const handleNext = () => {
-    if (currentStep < 3) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
     } else {
-      // Submit and redirect to results
-      router.push("/results/demo")
+      // Create judge system and redirect to system detail page
+      router.push("/systems/demo")
     }
+  }
+
+  const handleRunTest = async () => {
+    if (!formData.testContent) return
+
+    setIsTestingResults(true)
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    // Mock test results
+    setTestResults({
+      averageScore: 8.5,
+      judges: selectedJudges.map((judge, idx) => ({
+        id: judge.id,
+        name: judge.name,
+        score: 8.5 + (Math.random() - 0.5),
+        feedback: `This is sample feedback from ${judge.name}. The content shows good structure and clarity.`,
+        strengths: ["Clear structure", "Good examples"],
+        improvements: ["Could add more detail", "Consider additional sources"]
+      }))
+    })
+    setIsTestingResults(false)
   }
 
   const handleBack = () => {
@@ -53,8 +78,9 @@ export default function SubmitPage() {
   }
 
   const canProceed = () => {
-    if (currentStep === 1) return formData.title && formData.content
-    if (currentStep === 2) return formData.criteria
+    if (currentStep === 1) return selectedJudges.length > 0
+    if (currentStep === 2) return formData.systemName && formData.criteria
+    if (currentStep === 3) return true // Test step is optional
     return true
   }
 
@@ -68,7 +94,7 @@ export default function SubmitPage() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
-              JudgeAI
+              JuryBox
             </span>
           </Link>
 
@@ -126,59 +152,74 @@ export default function SubmitPage() {
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Submit Your Content</h2>
-                <p className="text-foreground/70">Provide the content you want the judges to evaluate</p>
+                <h2 className="text-2xl font-bold mb-2">Selected Judges</h2>
+                <p className="text-foreground/70">Review the judges you selected from the marketplace</p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="e.g., My Research Paper on AI Ethics"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="mt-1.5"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="content">Content *</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="Paste your content here or describe what you'd like evaluated..."
-                    value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                    className="mt-1.5 min-h-[300px]"
-                  />
-                  <p className="text-xs text-foreground/60 mt-2">You can paste text, code, or describe your project</p>
-                </div>
-
-                <div className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                  <div className="flex items-start gap-3">
-                    <Upload className="w-5 h-5 text-brand-cyan mt-0.5" />
-                    <div>
-                      <h4 className="font-medium mb-1">File Upload (Coming Soon)</h4>
-                      <p className="text-sm text-foreground/70">
-                        Soon you'll be able to upload documents, images, and other files directly
-                      </p>
+              <div className="space-y-3">
+                {selectedJudges.map((judge) => (
+                  <div
+                    key={judge.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-surface-2 border border-border/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={judge.avatar || `/placeholder.svg?height=48&width=48&query=${judge.name}`}
+                        alt={judge.name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                      <span className="font-medium">{judge.name}</span>
                     </div>
+                    <span className="font-mono font-bold text-brand-gold">${judge.price} / judgment</span>
                   </div>
-                </div>
+                ))}
               </div>
+
+              <div className="p-4 rounded-lg bg-brand-purple/5 border border-brand-purple/20">
+                <p className="text-sm text-foreground/70">
+                  <strong>Note:</strong> You're creating a reusable judge system. Once created, you can submit content for evaluation anytime via API or web interface.
+                </p>
+              </div>
+
+              <Button variant="outline" className="w-full bg-transparent" onClick={() => router.push('/marketplace')}>
+                Change Judges Selection
+              </Button>
             </div>
           )}
 
           {currentStep === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Evaluation Criteria</h2>
-                <p className="text-foreground/70">Tell the judges what aspects to focus on</p>
+                <h2 className="text-2xl font-bold mb-2">Configure Judge System</h2>
+                <p className="text-foreground/70">Set up your reusable evaluation system</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="criteria">What should the judges evaluate? *</Label>
+                  <Label htmlFor="systemName">System Name *</Label>
+                  <Input
+                    id="systemName"
+                    placeholder="e.g., Research Paper Evaluator"
+                    value={formData.systemName}
+                    onChange={(e) => setFormData({ ...formData, systemName: e.target.value })}
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-foreground/60 mt-2">A descriptive name for your judge system</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="What types of content will this system evaluate?"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="mt-1.5 min-h-[100px]"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="criteria">Evaluation Criteria *</Label>
                   <Textarea
                     id="criteria"
                     placeholder="e.g., Focus on clarity, technical accuracy, and practical applicability..."
@@ -186,13 +227,14 @@ export default function SubmitPage() {
                     onChange={(e) => setFormData({ ...formData, criteria: e.target.value })}
                     className="mt-1.5 min-h-[200px]"
                   />
+                  <p className="text-xs text-foreground/60 mt-2">Define what aspects judges should focus on</p>
                 </div>
 
                 <div>
-                  <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                  <Label htmlFor="notes">Additional Instructions (Optional)</Label>
                   <Textarea
                     id="notes"
-                    placeholder="Any additional context or specific questions for the judges..."
+                    placeholder="Any specific guidelines or context for the judges..."
                     value={formData.additionalNotes}
                     onChange={(e) => setFormData({ ...formData, additionalNotes: e.target.value })}
                     className="mt-1.5 min-h-[120px]"
@@ -216,8 +258,123 @@ export default function SubmitPage() {
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Review & Submit</h2>
-                <p className="text-foreground/70">Confirm your submission details before proceeding</p>
+                <h2 className="text-2xl font-bold mb-2">Test Your Judge System (Optional)</h2>
+                <p className="text-foreground/70">Try evaluating sample content to see how your judges will respond</p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="testContent">Test Content</Label>
+                  <Textarea
+                    id="testContent"
+                    placeholder="Paste sample content here to test your judge system..."
+                    value={formData.testContent}
+                    onChange={(e) => setFormData({ ...formData, testContent: e.target.value })}
+                    className="mt-1.5 min-h-[200px]"
+                  />
+                  <p className="text-xs text-foreground/60 mt-2">This content will be evaluated by your selected judges</p>
+                </div>
+
+                <Button
+                  onClick={handleRunTest}
+                  disabled={!formData.testContent || isTestingResults}
+                  className="w-full bg-brand-cyan hover:bg-brand-cyan/90"
+                >
+                  {isTestingResults ? (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                      Running Evaluation...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Run Test Evaluation
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Test Results */}
+              {testResults && (
+                <div className="space-y-4 mt-6">
+                  <div className="p-6 rounded-lg bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-lg">Average Score</span>
+                      <div className="flex items-center gap-2">
+                        <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
+                        <span className="text-3xl font-mono font-bold text-brand-gold">
+                          {testResults.averageScore.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">Judge Feedback</h3>
+                    {testResults.judges.map((judge: any) => (
+                      <Card key={judge.id} className="p-4 bg-surface-1">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium">{judge.name}</h4>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
+                            <span className="font-mono font-bold">{judge.score.toFixed(1)}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-foreground/70 mb-3">{judge.feedback}</p>
+                        <div className="grid md:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="font-medium text-brand-cyan">Strengths:</span>
+                            <ul className="mt-1 space-y-1 text-foreground/70">
+                              {judge.strengths.map((s: string, idx: number) => (
+                                <li key={idx}>• {s}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <span className="font-medium text-brand-purple">Improvements:</span>
+                            <ul className="mt-1 space-y-1 text-foreground/70">
+                              {judge.improvements.map((i: string, idx: number) => (
+                                <li key={idx}>• {i}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 rounded-lg bg-brand-cyan/5 border border-brand-cyan/20">
+                <p className="text-sm text-foreground/70">
+                  <strong>Note:</strong> This is a test evaluation to help you understand how your judge system will work. You can skip this step and proceed to create your system.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Review & Create System</h2>
+                <p className="text-foreground/70">Review your judge system configuration</p>
+              </div>
+
+              {/* System Info */}
+              <div>
+                <h3 className="font-semibold mb-3">System Information</h3>
+                <div className="p-4 rounded-lg bg-surface-2 border border-border/50 space-y-2">
+                  <div>
+                    <span className="text-sm text-foreground/60">Name:</span>
+                    <h4 className="font-medium">{formData.systemName}</h4>
+                  </div>
+                  {formData.description && (
+                    <div>
+                      <span className="text-sm text-foreground/60">Description:</span>
+                      <p className="text-sm text-foreground/70">{formData.description}</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Selected Judges */}
@@ -237,18 +394,9 @@ export default function SubmitPage() {
                         />
                         <span className="font-medium">{judge.name}</span>
                       </div>
-                      <span className="font-mono font-bold text-brand-gold">${judge.price}</span>
+                      <span className="font-mono font-bold text-brand-gold">${judge.price} / judgment</span>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Content Summary */}
-              <div>
-                <h3 className="font-semibold mb-3">Content</h3>
-                <div className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                  <h4 className="font-medium mb-2">{formData.title}</h4>
-                  <p className="text-sm text-foreground/70 line-clamp-3">{formData.content}</p>
                 </div>
               </div>
 
@@ -256,19 +404,32 @@ export default function SubmitPage() {
               <div>
                 <h3 className="font-semibold mb-3">Evaluation Criteria</h3>
                 <div className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                  <p className="text-sm text-foreground/70">{formData.criteria}</p>
+                  <p className="text-sm text-foreground/70 whitespace-pre-wrap">{formData.criteria}</p>
                 </div>
               </div>
 
               {/* Cost Summary */}
               <div className="p-6 rounded-lg bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-foreground/70">Total Cost</span>
-                  <span className="text-3xl font-mono font-bold text-brand-gold">${totalCost}</span>
+                  <span className="text-lg">Cost Per Evaluation</span>
+                  <span className="text-3xl font-mono font-bold text-brand-gold">${totalCost.toFixed(3)}</span>
                 </div>
                 <p className="text-sm text-foreground/60">
-                  You'll receive detailed feedback from {selectedJudges.length} expert judges
+                  Each evaluation will cost ${totalCost.toFixed(3)} using {selectedJudges.length} judges
                 </p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-brand-cyan/5 border border-brand-cyan/20">
+                <h4 className="font-medium mb-2 text-brand-cyan flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  What happens next?
+                </h4>
+                <ul className="space-y-1 text-sm text-foreground/70">
+                  <li>✓ Your judge system will be created with a unique API endpoint</li>
+                  <li>✓ You can submit content for evaluation anytime via API or web interface</li>
+                  <li>✓ Each evaluation will use your configured judges and criteria</li>
+                  <li>✓ Results are available instantly through the API response or dashboard</li>
+                </ul>
               </div>
             </div>
           )}
@@ -286,7 +447,7 @@ export default function SubmitPage() {
             disabled={!canProceed()}
             className="bg-brand-purple hover:bg-brand-purple/90 gap-2"
           >
-            {currentStep === 3 ? "Submit for Judgment" : "Continue"}
+            {currentStep === 4 ? "Create Judge System" : currentStep === 3 ? "Skip Test & Continue" : "Continue"}
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>

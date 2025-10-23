@@ -116,9 +116,6 @@ export default function DashboardPage() {
             <Link href="/dashboard" className="text-sm text-brand-purple font-medium">
               Dashboard
             </Link>
-            <Link href="/how-it-works" className="text-sm text-foreground/80 hover:text-foreground transition-colors">
-              How It Works
-            </Link>
           </div>
 
           <div className="flex items-center gap-3">

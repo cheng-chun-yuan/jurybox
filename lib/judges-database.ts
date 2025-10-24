@@ -138,7 +138,7 @@ const judgesDB: Judge[] = [
       },
       {
         rating: 9.5,
-        comment: 'Best code review I've ever received. Very thorough.',
+        comment: "Best code review I've ever received. Very thorough.",
         author: 'Emma T.',
         date: '4 days ago',
       },

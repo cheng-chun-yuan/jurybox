@@ -9,18 +9,19 @@ import { JudgeGrid } from "@/components/marketplace/judge-grid"
 import { JudgeSelector } from "@/components/judge-selector"
 import { useMarketplaceFilters } from "@/hooks/use-marketplace-filters"
 import { useJudgeSelection } from "@/hooks/use-judge-selection"
-import { getAllJudges } from "@/lib/judges-database"
+import { useAllJudges } from "@/hooks/use-judges-api"
 
 // Lazy load heavy modal component
 const JudgeDetailModal = lazy(() => import("@/components/judge-detail-modal").then(mod => ({ default: mod.JudgeDetailModal })))
-
-// Get all judges from centralized database
-const allJudges = getAllJudges()
 
 const categories = ["All", "Academic", "Creative", "Technical", "Business", "Writing", "Data"]
 
 export default function MarketplacePage() {
   const router = useRouter()
+
+  // Fetch all judges from backend API
+  const { judges: allJudges, loading: loadingJudges, error: judgesError } = useAllJudges()
+
   const [detailJudge, setDetailJudge] = useState<(typeof allJudges)[0] | null>(null)
 
   // Use custom hooks for cleaner state management
@@ -46,15 +47,39 @@ export default function MarketplacePage() {
         onCategoryChange={setSelectedCategory}
         categories={categories}
       />
-      <JudgeGrid
-        judges={filteredJudges}
-        selectedJudges={selectedJudges}
-        onSelectJudge={(id) => {
-          const judge = allJudges.find((j) => j.id === id)
-          if (judge) selectJudge(judge)
-        }}
-        onViewDetails={setDetailJudge}
-      />
+
+      {/* Loading State */}
+      {loadingJudges && (
+        <div className="container mx-auto px-4 py-16">
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-16 h-16 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin mb-4" />
+            <p className="text-foreground/70">Loading judges...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {judgesError && (
+        <div className="container mx-auto px-4 py-16">
+          <div className="p-6 rounded-lg bg-red-500/10 border border-red-500/30 max-w-md mx-auto">
+            <h4 className="font-medium mb-2 text-red-400">Error Loading Judges</h4>
+            <p className="text-sm text-foreground/70">{judgesError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Judges Grid - Only show when loaded */}
+      {!loadingJudges && !judgesError && (
+        <JudgeGrid
+          judges={filteredJudges}
+          selectedJudges={selectedJudges}
+          onSelectJudge={(id) => {
+            const judge = allJudges.find((j) => j.id === id)
+            if (judge) selectJudge(judge)
+          }}
+          onViewDetails={setDetailJudge}
+        />
+      )}
       <Suspense fallback={null}>
         <JudgeDetailModal
           judge={detailJudge}

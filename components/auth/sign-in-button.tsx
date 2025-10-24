@@ -1,8 +1,7 @@
 'use client'
 
-import { usePrivy } from '@privy-io/react-auth'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
-import { LogOut } from 'lucide-react'
 
 interface SignInButtonProps {
   variant?: 'default' | 'ghost' | 'outline'
@@ -11,34 +10,84 @@ interface SignInButtonProps {
 }
 
 export function SignInButton({ variant = 'ghost', size = 'sm', className }: SignInButtonProps) {
-  const { ready, authenticated, login, logout, user } = usePrivy()
-
-  // Don't render until Privy is ready
-  if (!ready) {
-    return (
-      <Button variant={variant} size={size} className={className} disabled>
-        Loading...
-      </Button>
-    )
-  }
-
-  if (authenticated && user) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-foreground/80 hidden sm:inline">
-          {user.email?.address || user.wallet?.address?.slice(0, 6) + '...' + user.wallet?.address?.slice(-4)}
-        </span>
-        <Button variant={variant} size={size} className={className} onClick={logout}>
-          <LogOut className="w-4 h-4 sm:mr-2" />
-          <span className="hidden sm:inline">Sign Out</span>
-        </Button>
-      </div>
-    )
-  }
-
   return (
-    <Button variant={variant} size={size} className={className} onClick={login}>
-      Sign In
-    </Button>
-  )
+    <ConnectButton.Custom>
+      {({
+        account,
+        chain,
+        openAccountModal,
+        openChainModal,
+        openConnectModal,
+        authenticationStatus,
+        mounted,
+      }) => {
+        const ready = mounted && authenticationStatus !== 'loading';
+        const connected =
+          ready &&
+          account &&
+          chain &&
+          (!authenticationStatus ||
+            authenticationStatus === 'authenticated');
+
+        return (
+          <div
+            {...(!ready && {
+              'aria-hidden': true,
+              'style': {
+                opacity: 0,
+                pointerEvents: 'none',
+                userSelect: 'none',
+              },
+            })}
+          >
+            {(() => {
+              if (!connected) {
+                return (
+                  <Button
+                    variant={variant}
+                    size={size}
+                    className={className}
+                    onClick={openConnectModal}
+                  >
+                    Sign In
+                  </Button>
+                );
+              }
+
+              if (chain.unsupported) {
+                return (
+                  <Button
+                    variant={variant}
+                    size={size}
+                    className={className}
+                    onClick={openChainModal}
+                  >
+                    Wrong network
+                  </Button>
+                );
+              }
+
+              return (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-foreground/80 hidden sm:inline">
+                    {account.displayName}
+                  </span>
+                  <Button
+                    variant={variant}
+                    size={size}
+                    className={className}
+                    onClick={openAccountModal}
+                  >
+                    {account.displayBalance
+                      ? ` (${account.displayBalance})`
+                      : ''}
+                  </Button>
+                </div>
+              );
+            })()}
+          </div>
+        );
+      }}
+    </ConnectButton.Custom>
+  );
 }

@@ -15,7 +15,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
-
+import { SignInButton } from "@/components/auth/sign-in-button";
 // Mock dashboard data
 const stats = {
   totalJudgments: 12,
@@ -134,9 +134,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
+            <SignInButton variant="ghost" size="sm" />
             <Button
               size="sm"
               className="bg-brand-purple hover:bg-brand-purple/90"
@@ -308,7 +306,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-6">            
             {/* Favorite Judges */}
             <Card className="p-6">
               <h2 className="text-xl font-bold mb-4">Favorite Judges</h2>

@@ -4,44 +4,28 @@ import Image from "next/image"
 import { memo } from "react"
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
-
-const judges = [
-  {
-    id: 1,
-    name: "Dr. Academic",
-    title: "Research Specialist",
-    tagline: "Rigorous analysis meets clarity",
-    rating: 9.8,
-    price: 25,
-    specialties: ["Research", "Academic", "Analysis"],
-    color: "purple",
-    avatar: "/judges/professional-academic-avatar.jpg",
-  },
-  {
-    id: 2,
-    name: "Creative Maven",
-    title: "Design Critic",
-    tagline: "Where art meets innovation",
-    rating: 9.5,
-    price: 30,
-    specialties: ["Design", "Creative", "UX"],
-    color: "cyan",
-    avatar: "/judges/creative-designer-avatar.png",
-  },
-  {
-    id: 3,
-    name: "Tech Guru",
-    title: "Code Reviewer",
-    tagline: "Clean code, better systems",
-    rating: 9.7,
-    price: 35,
-    specialties: ["Code", "Architecture", "Performance"],
-    color: "gold",
-    avatar: "/judges/tech-expert-avatar.png",
-  },
-]
+import { useAllJudges } from "@/hooks/use-judges-api"
 
 function FeaturedJudgesComponent() {
+  // Fetch judges from backend API and filter for featured/trending
+  const { judges: allJudges, loading } = useAllJudges({ trending: true })
+
+  // Take first 3 judges for featured section
+  const judges = allJudges.slice(0, 3)
+
+  if (loading) {
+    return (
+      <div className="grid md:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="rounded-[20px] bg-surface-1 border-2 border-border/30 p-6 animate-pulse">
+            <div className="h-48 bg-surface-2 rounded-lg mb-4" />
+            <div className="h-6 bg-surface-2 rounded mb-2" />
+            <div className="h-4 bg-surface-2 rounded w-2/3" />
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <div className="grid md:grid-cols-3 gap-6">
       {judges.map((judge) => (

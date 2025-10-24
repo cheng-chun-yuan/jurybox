@@ -11,7 +11,8 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { SignInButton } from "@/components/auth/sign-in-button"
 import { Logo } from "@/components/logo"
-import { getJudgesByIds } from "@/lib/judges-database"
+import { useJudgesByIds } from "@/hooks/use-judges-api"
+import type { Judge } from "@/types/judge"
 
 const steps = [
   { id: 1, name: "Judges", icon: Sparkles },
@@ -38,25 +39,19 @@ export default function SubmitPage() {
   const [isCreatingOrchestrator, setIsCreatingOrchestrator] = useState(false)
   const [orchestratorResult, setOrchestratorResult] = useState<any>(null)
 
-  // Get selected judges from URL params
-  const selectedJudges = useMemo(() => {
-    const judgeIds = searchParams.get('judges')
-    if (!judgeIds) {
+  // Get selected judge IDs from URL params
+  const judgeIds = useMemo(() => {
+    const judgeIdsParam = searchParams.get('judges')
+    if (!judgeIdsParam) {
       // Redirect back to marketplace if no judges selected
       router.push('/marketplace')
       return []
     }
-
-    const ids = judgeIds.split(',').map(Number)
-
-    // Fetch judges from centralized database
-    return getJudgesByIds(ids).map(judge => ({
-      id: judge.id,
-      name: judge.name,
-      price: judge.price,
-      avatar: judge.avatar,
-    }))
+    return judgeIdsParam.split(',').map(Number)
   }, [searchParams, router])
+
+  // Fetch judges from backend API
+  const { judges: selectedJudges, loading: loadingJudges, error: judgesError } = useJudgesByIds(judgeIds)
 
   const totalCost = selectedJudges.reduce((sum, judge) => sum + judge.price, 0)
 
@@ -222,7 +217,31 @@ export default function SubmitPage() {
 
         {/* Step Content */}
         <Card className="p-8 mb-8">
-          {currentStep === 1 && (
+          {/* Loading State */}
+          {loadingJudges && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Sparkles className="w-12 h-12 text-brand-purple animate-spin mb-4" />
+              <p className="text-foreground/70">Loading judges...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {judgesError && (
+            <div className="p-6 rounded-lg bg-red-500/10 border border-red-500/30">
+              <h4 className="font-medium mb-2 text-red-400">Error Loading Judges</h4>
+              <p className="text-sm text-foreground/70">{judgesError}</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => router.push('/marketplace')}
+              >
+                Back to Marketplace
+              </Button>
+            </div>
+          )}
+
+          {/* Content - Only show when not loading and no error */}
+          {!loadingJudges && !judgesError && currentStep === 1 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold mb-2">Selected Judges</h2>
@@ -260,7 +279,7 @@ export default function SubmitPage() {
             </div>
           )}
 
-          {currentStep === 2 && (
+          {!loadingJudges && !judgesError && currentStep === 2 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold mb-2">Configure Judge System</h2>
@@ -328,7 +347,7 @@ export default function SubmitPage() {
             </div>
           )}
 
-          {currentStep === 3 && (
+          {!loadingJudges && !judgesError && currentStep === 3 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold mb-2">Test Your Judge System (Optional)</h2>
@@ -517,7 +536,7 @@ export default function SubmitPage() {
             </div>
           )}
 
-          {currentStep === 4 && (
+          {!loadingJudges && !judgesError && currentStep === 4 && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold mb-2">Review & Fund System</h2>

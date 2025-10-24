@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Sparkles, Upload, FileText, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react"
+import { Sparkles, Upload, FileText, CheckCircle2, ArrowRight, ArrowLeft, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { SignInButton } from "@/components/auth/sign-in-button"
+import { Logo } from "@/components/logo"
 
 const steps = [
   { id: 1, name: "Judges", icon: Sparkles },
@@ -32,8 +34,8 @@ export default function SubmitPage() {
 
   // Mock selected judges (in real app, would come from state management)
   const selectedJudges = [
-    { id: 1, name: "Dr. Academic", price: 0.025, avatar: "/professional-academic-avatar.jpg" },
-    { id: 2, name: "Creative Maven", price: 0.03, avatar: "/creative-designer-avatar.png" },
+    { id: 1, name: "Dr. Academic", price: 0.025, avatar: "/judges/professional-academic-avatar.jpg" },
+    { id: 2, name: "Creative Maven", price: 0.03, avatar: "/judges/creative-designer-avatar.png" },
   ]
 
   const totalCost = selectedJudges.reduce((sum, judge) => sum + judge.price, 0)
@@ -90,18 +92,14 @@ export default function SubmitPage() {
       <nav className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-40 bg-background/80">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
+            <Logo size={32} />
+            <span className="text-xl font-bold bg-linear-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
               JuryBox
             </span>
           </Link>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
+            <SignInButton variant="ghost" size="sm" />
           </div>
         </div>
       </nav>
@@ -297,7 +295,7 @@ export default function SubmitPage() {
               {/* Test Results */}
               {testResults && (
                 <div className="space-y-4 mt-6">
-                  <div className="p-6 rounded-lg bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
+                  <div className="p-6 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-lg">Average Score</span>
                       <div className="flex items-center gap-2">
@@ -409,7 +407,7 @@ export default function SubmitPage() {
               </div>
 
               {/* Cost Summary */}
-              <div className="p-6 rounded-lg bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
+              <div className="p-6 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-lg">Cost Per Evaluation</span>
                   <span className="text-3xl font-mono font-bold text-brand-gold">${totalCost.toFixed(3)}</span>

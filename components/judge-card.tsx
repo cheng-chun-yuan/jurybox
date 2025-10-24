@@ -65,7 +65,7 @@ export function JudgeCard({ judge, onSelect, onViewDetails, selected }: JudgeCar
           alt={judge.name}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-surface-1 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-surface-1 to-transparent" />
       </div>
 
       {/* Content */}

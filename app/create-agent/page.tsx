@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Sparkles, ArrowLeft, Plus, X, Loader2 } from "lucide-react"
+import { Logo } from "@/components/logo"
 
 export default function CreateAgentPage() {
   const router = useRouter()
@@ -157,10 +158,8 @@ export default function CreateAgentPage() {
       <nav className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
+            <Logo size={32} />
+            <span className="text-xl font-bold bg-linear-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
               JuryBox
             </span>
           </Link>
@@ -179,7 +178,7 @@ export default function CreateAgentPage() {
         <div className="container mx-auto px-4 py-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Create Your{" "}
-            <span className="bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
               AI Judge Agent
             </span>
           </h1>

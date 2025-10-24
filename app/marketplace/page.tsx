@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Filter, Sparkles, SlidersHorizontal } from "lucide-react"
+import { Search, Filter, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { JudgeCard } from "@/components/judge-card"
@@ -10,6 +10,8 @@ import { JudgeSelector } from "@/components/judge-selector"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { SignInButton } from "@/components/auth/sign-in-button"
+import { Logo } from "@/components/logo"
 
 // Mock data for judges
 const allJudges = [
@@ -23,7 +25,7 @@ const allJudges = [
     price: 0.025,
     specialties: ["Research", "Academic", "Analysis"],
     color: "purple" as const,
-    avatar: "/professional-academic-avatar.jpg",
+    avatar: "/judges/professional-academic-avatar.jpg",
     trending: true,
     bio: "With over 15 years of experience in academic research and peer review, I provide comprehensive analysis that combines scholarly rigor with practical insights.",
     expertise: [
@@ -62,7 +64,7 @@ const allJudges = [
     price: 0.03,
     specialties: ["Design", "Creative", "UX"],
     color: "cyan" as const,
-    avatar: "/creative-designer-avatar.png",
+    avatar: "/judges/creative-designer-avatar.png",
     trending: true,
     bio: "Award-winning designer with a passion for user-centered design. I help creators elevate their work through actionable, creative feedback.",
     expertise: [
@@ -101,7 +103,7 @@ const allJudges = [
     price: 0.035,
     specialties: ["Code", "Architecture", "Performance"],
     color: "gold" as const,
-    avatar: "/tech-expert-avatar.png",
+    avatar: "/judges/tech-expert-avatar.png",
     bio: "Senior software architect specializing in scalable systems and clean code practices. I provide technical reviews that improve code quality and system design.",
     expertise: [
       "Code quality and best practices",
@@ -268,10 +270,8 @@ export default function MarketplacePage() {
       <nav className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-40 bg-background/80">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
+            <Logo size={32} />
+            <span className="text-xl font-bold bg-linear-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
               JuryBox
             </span>
           </Link>
@@ -286,9 +286,7 @@ export default function MarketplacePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
+            <SignInButton variant="ghost" size="sm" />
             <Button size="sm" className="bg-brand-purple hover:bg-brand-purple/90" asChild>
               <Link href="/create-agent">Create Agent</Link>
             </Button>
@@ -301,7 +299,7 @@ export default function MarketplacePage() {
         <div className="container mx-auto px-4 py-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-balance">
             Browse Expert{" "}
-            <span className="bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
               AI Judges
             </span>
           </h1>
@@ -328,7 +326,7 @@ export default function MarketplacePage() {
 
             {/* Category Filter */}
             <div className="flex items-center gap-2 overflow-x-auto">
-              <SlidersHorizontal className="w-4 h-4 text-foreground/60 flex-shrink-0" />
+              <SlidersHorizontal className="w-4 h-4 text-foreground/60 shrink-0" />
               {categories.map((category) => (
                 <Button
                   key={category}

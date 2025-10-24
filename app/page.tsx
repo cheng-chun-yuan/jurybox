@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react"
 import { FeaturedJudges } from "@/components/featured-judges"
 import { RecentJudgments } from "@/components/recent-judgments"
+import { SignInButton } from "@/components/auth/sign-in-button"
+import { Logo } from "@/components/logo"
 
 export default function LandingPage() {
   return (
@@ -11,10 +13,8 @@ export default function LandingPage() {
       <nav className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
+            <Logo size={32} />
+            <span className="text-xl font-bold bg-linear-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
               JuryBox
             </span>
           </div>
@@ -29,9 +29,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
+            <SignInButton variant="ghost" size="sm" />
             <Button size="sm" className="bg-brand-purple hover:bg-brand-purple/90">
               Get Started
             </Button>
@@ -49,7 +47,7 @@ export default function LandingPage() {
 
           <h1 className="text-5xl md:text-7xl font-bold mb-6 text-balance">
             Get Expert{" "}
-            <span className="bg-gradient-to-r from-brand-purple via-brand-cyan to-brand-gold bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-brand-purple via-brand-cyan to-brand-gold bg-clip-text text-transparent">
               AI Judgments
             </span>{" "}
             on Your Work
@@ -79,7 +77,7 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="relative">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-purple to-brand-purple/50 flex items-center justify-center mb-4 glow-purple">
+              <div className="w-12 h-12 rounded-xl bg-linear-to-br from-brand-purple to-brand-purple/50 flex items-center justify-center mb-4 glow-purple">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2">Select Judges</h3>
@@ -89,7 +87,7 @@ export default function LandingPage() {
             </div>
 
             <div className="relative">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-cyan to-brand-cyan/50 flex items-center justify-center mb-4 glow-cyan">
+              <div className="w-12 h-12 rounded-xl bg-linear-to-br from-brand-cyan to-brand-cyan/50 flex items-center justify-center mb-4 glow-cyan">
                 <Zap className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2">Submit Content</h3>
@@ -99,7 +97,7 @@ export default function LandingPage() {
             </div>
 
             <div className="relative">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-gold to-brand-gold/50 flex items-center justify-center mb-4 glow-gold">
+              <div className="w-12 h-12 rounded-xl bg-linear-to-br from-brand-gold to-brand-gold/50 flex items-center justify-center mb-4 glow-gold">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2">Get Verdict</h3>
@@ -143,9 +141,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
+                <Logo size={32} />
                 <span className="text-xl font-bold">JuryBox</span>
               </div>
               <p className="text-sm text-foreground/60">Expert AI judgments for your content</p>

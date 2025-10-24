@@ -19,7 +19,7 @@ const judgmentData = {
     {
       id: 1,
       name: "Dr. Academic",
-      avatar: "/professional-academic-avatar.jpg",
+      avatar: "/judges/professional-academic-avatar.jpg",
       score: 8.7,
       verdict: "Strong research with minor improvements needed",
       strengths: [
@@ -38,7 +38,7 @@ const judgmentData = {
     {
       id: 2,
       name: "Creative Maven",
-      avatar: "/creative-designer-avatar.png",
+      avatar: "/judges/creative-designer-avatar.png",
       score: 8.3,
       verdict: "Good content, presentation could be enhanced",
       strengths: [
@@ -66,10 +66,10 @@ export default function ResultsPage() {
       <nav className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-40 bg-background/80">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-brand-purple to-brand-cyan flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-linear-to-r from-brand-purple to-brand-cyan bg-clip-text text-transparent">
               JudgeAI
             </span>
           </Link>
@@ -99,7 +99,7 @@ export default function ResultsPage() {
           </div>
 
           {/* Overall Score */}
-          <Card className="p-6 bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10 border-brand-purple/30">
+          <Card className="p-6 bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border-brand-purple/30">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold mb-1">Overall Score</h2>

@@ -13,7 +13,7 @@ const judges = [
     price: 25,
     specialties: ["Research", "Academic", "Analysis"],
     color: "purple",
-    avatar: "/professional-academic-avatar.jpg",
+    avatar: "/judges/professional-academic-avatar.jpg",
   },
   {
     id: 2,
@@ -24,7 +24,7 @@ const judges = [
     price: 30,
     specialties: ["Design", "Creative", "UX"],
     color: "cyan",
-    avatar: "/creative-designer-avatar.png",
+    avatar: "/judges/creative-designer-avatar.png",
   },
   {
     id: 3,
@@ -35,7 +35,7 @@ const judges = [
     price: 35,
     specialties: ["Code", "Architecture", "Performance"],
     color: "gold",
-    avatar: "/tech-expert-avatar.png",
+    avatar: "/judges/tech-expert-avatar.png",
   },
 ]
 
@@ -56,7 +56,7 @@ export function FeaturedJudges() {
           {/* Avatar */}
           <div className="relative h-48 overflow-hidden">
             <img src={judge.avatar || "/placeholder.svg"} alt={judge.name} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-surface-1 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-surface-1 to-transparent" />
           </div>
 
           {/* Content */}

@@ -138,7 +138,7 @@ export function EvaluationProgressTracker({ progress, consensusResult }: Evaluat
 
         {/* Consensus Result */}
         {consensusResult && progress.status === 'completed' && (
-          <div className="p-4 rounded-lg bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
+          <div className="p-4 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
             <div className="text-center mb-4">
               <div className="text-4xl font-bold text-brand-purple mb-2">
                 {consensusResult.finalScore.toFixed(2)}

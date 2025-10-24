@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sparkles, Upload, FileText, CheckCircle2, ArrowRight, ArrowLeft, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { SignInButton } from "@/components/auth/sign-in-button"
 import { Logo } from "@/components/logo"
+import { getJudgesByIds } from "@/lib/judges-database"
 
 const steps = [
   { id: 1, name: "Judges", icon: Sparkles },
@@ -21,6 +22,7 @@ const steps = [
 
 export default function SubmitPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
     systemName: "",
@@ -32,11 +34,25 @@ export default function SubmitPage() {
   const [isTestingResults, setIsTestingResults] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
 
-  // Mock selected judges (in real app, would come from state management)
-  const selectedJudges = [
-    { id: 1, name: "Dr. Academic", price: 0.025, avatar: "/judges/professional-academic-avatar.jpg" },
-    { id: 2, name: "Creative Maven", price: 0.03, avatar: "/judges/creative-designer-avatar.png" },
-  ]
+  // Get selected judges from URL params
+  const selectedJudges = useMemo(() => {
+    const judgeIds = searchParams.get('judges')
+    if (!judgeIds) {
+      // Redirect back to marketplace if no judges selected
+      router.push('/marketplace')
+      return []
+    }
+
+    const ids = judgeIds.split(',').map(Number)
+
+    // Fetch judges from centralized database
+    return getJudgesByIds(ids).map(judge => ({
+      id: judge.id,
+      name: judge.name,
+      price: judge.price,
+      avatar: judge.avatar,
+    }))
+  }, [searchParams, router])
 
   const totalCost = selectedJudges.reduce((sum, judge) => sum + judge.price, 0)
 

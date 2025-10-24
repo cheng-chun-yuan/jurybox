@@ -3,11 +3,7 @@
 import { Filter } from 'lucide-react'
 import { JudgeCard } from '@/components/judge-card'
 import { Badge } from '@/components/ui/badge'
-
-interface Judge {
-  id: number
-  [key: string]: any
-}
+import type { Judge } from '@/lib/judges-database'
 
 interface JudgeGridProps {
   judges: Judge[]

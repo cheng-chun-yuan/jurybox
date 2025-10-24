@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Logo } from "@/components/logo"
+import { Logo } from "@/components/logo";
 
 // Mock dashboard data
 const stats = {

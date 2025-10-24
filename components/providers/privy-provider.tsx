@@ -27,6 +27,56 @@ export function PrivyClientProvider({ children }: { children: React.ReactNode })
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
+        defaultChain: {
+          id: 296,
+          name: 'Hedera Testnet',
+          network: 'hedera-testnet',
+          nativeCurrency: {
+            name: 'HBAR',
+            symbol: 'HBAR',
+            decimals: 8,
+          },
+          rpcUrls: {
+            default: {
+              http: ['https://testnet.hashio.io/api'],
+            },
+            public: {
+              http: ['https://testnet.hashio.io/api'],
+            },
+          },
+          blockExplorers: {
+            default: {
+              name: 'HashScan',
+              url: 'https://hashscan.io/testnet',
+            },
+          },
+        },
+        supportedChains: [
+          {
+            id: 296,
+            name: 'Hedera Testnet',
+            network: 'hedera-testnet',
+            nativeCurrency: {
+              name: 'HBAR',
+              symbol: 'HBAR',
+              decimals: 8,
+            },
+            rpcUrls: {
+              default: {
+                http: ['https://testnet.hashio.io/api'],
+              },
+              public: {
+                http: ['https://testnet.hashio.io/api'],
+              },
+            },
+            blockExplorers: {
+              default: {
+                name: 'HashScan',
+                url: 'https://hashscan.io/testnet',
+              },
+            },
+          },
+        ],
       }}
     >
       {children}

@@ -21,9 +21,9 @@ export function PrivyClientProvider({ children }: { children: React.ReactNode })
         appearance: {
           theme: 'dark',
           accentColor: '#8B5CF6',
-          logo: '/logo.png',
+          logo: '/logo.svg',
         },
-        loginMethods: ['email', 'wallet', 'google', 'twitter'],
+        loginMethods: ['email', 'wallet'],
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },

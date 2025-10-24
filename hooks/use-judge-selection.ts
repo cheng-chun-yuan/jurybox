@@ -1,12 +1,5 @@
 import { useState, useCallback } from 'react'
-
-export interface Judge {
-  id: number | string
-  name: string
-  price: number
-  avatar: string
-  [key: string]: any
-}
+import type { Judge } from '@/lib/judges-database'
 
 export function useJudgeSelection(maxJudges: number = 5) {
   const [selectedJudges, setSelectedJudges] = useState<Judge[]>([])

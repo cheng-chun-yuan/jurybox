@@ -324,13 +324,14 @@ export class ViemRegistryService {
     try {
       console.log(`✅ Submitting validation for agent ${agentId}, task ${taskId}`)
 
-      const proofBytes = new TextEncoder().encode(proof)
+      // Convert proof string to hex bytes
+      const proofBytes = `0x${Buffer.from(proof).toString('hex')}` as `0x${string}`
 
       const { request } = await this.publicClient.simulateContract({
         address: CONTRACT_ADDRESSES.ValidationRegistry as Address,
         abi: validationRegistryAbi,
         functionName: 'submitValidation',
-        args: [agentId, taskId, proofBytes as `0x${string}`],
+        args: [agentId, taskId, proofBytes],
         account: this.walletClient.account,
       })
 

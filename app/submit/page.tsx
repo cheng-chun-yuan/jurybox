@@ -30,9 +30,13 @@ export default function SubmitPage() {
     criteria: "",
     additionalNotes: "",
     testContent: "",
+    budget: "",
+    ownerAddress: "",
   })
   const [isTestingResults, setIsTestingResults] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
+  const [isCreatingOrchestrator, setIsCreatingOrchestrator] = useState(false)
+  const [orchestratorResult, setOrchestratorResult] = useState<any>(null)
 
   // Get selected judges from URL params
   const selectedJudges = useMemo(() => {
@@ -56,12 +60,51 @@ export default function SubmitPage() {
 
   const totalCost = selectedJudges.reduce((sum, judge) => sum + judge.price, 0)
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
     } else {
-      // Create judge system and redirect to system detail page
-      router.push("/systems/demo")
+      // Create orchestrator system
+      await handleCreateOrchestrator()
+    }
+  }
+
+  const handleCreateOrchestrator = async () => {
+    setIsCreatingOrchestrator(true)
+
+    try {
+      const response = await fetch('/api/orchestrator/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          judgeIds: selectedJudges.map(j => j.id),
+          systemName: formData.systemName,
+          criteria: formData.criteria,
+          budget: parseFloat(formData.budget),
+          ownerAddress: formData.ownerAddress,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create orchestrator')
+      }
+
+      setOrchestratorResult(data)
+
+      // Show success and redirect after delay
+      setTimeout(() => {
+        router.push(`/systems/${data.system.id}`)
+      }, 2000)
+
+    } catch (error) {
+      console.error('Error creating orchestrator:', error)
+      alert(error instanceof Error ? error.message : 'Failed to create orchestrator system')
+    } finally {
+      setIsCreatingOrchestrator(false)
     }
   }
 
@@ -69,22 +112,35 @@ export default function SubmitPage() {
     if (!formData.testContent) return
 
     setIsTestingResults(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    setTestResults(null)
 
-    // Mock test results
-    setTestResults({
-      averageScore: 8.5,
-      judges: selectedJudges.map((judge, idx) => ({
-        id: judge.id,
-        name: judge.name,
-        score: 8.5 + (Math.random() - 0.5),
-        feedback: `This is sample feedback from ${judge.name}. The content shows good structure and clarity.`,
-        strengths: ["Clear structure", "Good examples"],
-        improvements: ["Could add more detail", "Consider additional sources"]
-      }))
-    })
-    setIsTestingResults(false)
+    try {
+      const response = await fetch('/api/orchestrator/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          judgeIds: selectedJudges.map(j => j.id),
+          testContent: formData.testContent,
+          criteria: formData.criteria,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to run test evaluation')
+      }
+
+      setTestResults(data.evaluation)
+
+    } catch (error) {
+      console.error('Error running test:', error)
+      alert(error instanceof Error ? error.message : 'Failed to run test evaluation')
+    } finally {
+      setIsTestingResults(false)
+    }
   }
 
   const handleBack = () => {
@@ -99,6 +155,9 @@ export default function SubmitPage() {
     if (currentStep === 1) return selectedJudges.length > 0
     if (currentStep === 2) return formData.systemName && formData.criteria
     if (currentStep === 3) return true // Test step is optional
+    if (currentStep === 4) {
+      return formData.budget && parseFloat(formData.budget) >= totalCost && formData.ownerAddress
+    }
     return true
   }
 
@@ -311,20 +370,111 @@ export default function SubmitPage() {
               {/* Test Results */}
               {testResults && (
                 <div className="space-y-4 mt-6">
+                  {/* Consensus Summary */}
                   <div className="p-6 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-lg">Average Score</span>
-                      <div className="flex items-center gap-2">
-                        <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
-                        <span className="text-3xl font-mono font-bold text-brand-gold">
-                          {testResults.averageScore.toFixed(1)}
-                        </span>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div>
+                        <span className="text-sm text-foreground/60">Consensus Score</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
+                          <span className="text-3xl font-mono font-bold text-brand-gold">
+                            {testResults.averageScore.toFixed(1)}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-foreground/60">Confidence</span>
+                        <div className="text-2xl font-mono font-bold text-brand-cyan mt-1">
+                          {(testResults.confidence * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-foreground/60">Convergence</span>
+                        <div className="text-2xl font-mono font-bold text-brand-purple mt-1">
+                          {testResults.convergenceRounds} rounds
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-border/30">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-foreground/60">Algorithm:</span>
+                        <span className="font-mono font-medium">{testResults.algorithm}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-2">
+                        <span className="text-foreground/60">Variance:</span>
+                        <span className="font-mono font-medium">{testResults.variance?.toFixed(3) || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-2">
+                        <span className="text-foreground/60">HCS Topic ID:</span>
+                        <span className="font-mono text-xs">{testResults.topicId}</span>
                       </div>
                     </div>
                   </div>
 
+                  {/* HCS Message Timeline */}
+                  {testResults.hcsMessages && testResults.hcsMessages.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-brand-cyan" />
+                        HCS Consensus Timeline
+                      </h3>
+                      {testResults.hcsMessages.map((round: any, roundIdx: number) => (
+                        <Card key={roundIdx} className="p-4 bg-surface-1">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium">
+                              {round.roundNumber === 0 ? 'Initial Scoring' : `Discussion Round ${round.roundNumber}`}
+                            </h4>
+                            <span className="text-xs text-foreground/60 font-mono">
+                              {round.duration}ms
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {round.messages.map((msg: any, msgIdx: number) => (
+                              <div
+                                key={msgIdx}
+                                className="p-3 rounded-lg bg-surface-2 border border-border/30"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">{msg.agentName}</span>
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-brand-purple/20 text-brand-purple">
+                                      {msg.type}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-foreground/60 font-mono">
+                                    {new Date(msg.timestamp).toLocaleTimeString()}
+                                  </span>
+                                </div>
+                                {msg.data.score !== undefined && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
+                                    <span className="font-mono font-bold">{msg.data.score.toFixed(2)}</span>
+                                    {msg.data.reasoning && (
+                                      <span className="text-foreground/70 text-xs ml-2">
+                                        {msg.data.reasoning}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {msg.data.content && (
+                                  <p className="text-sm text-foreground/70">{msg.data.content}</p>
+                                )}
+                                {msg.data.adjustedScore !== undefined && (
+                                  <div className="text-sm text-foreground/70">
+                                    Adjusted: {msg.data.originalScore.toFixed(2)} → {msg.data.adjustedScore.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Judge Feedback */}
                   <div className="space-y-3">
-                    <h3 className="font-semibold">Judge Feedback</h3>
+                    <h3 className="font-semibold">Final Judge Evaluations</h3>
                     {testResults.judges.map((judge: any) => (
                       <Card key={judge.id} className="p-4 bg-surface-1">
                         <div className="flex items-center justify-between mb-3">
@@ -370,8 +520,8 @@ export default function SubmitPage() {
           {currentStep === 4 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Review & Create System</h2>
-                <p className="text-foreground/70">Review your judge system configuration</p>
+                <h2 className="text-2xl font-bold mb-2">Review & Fund System</h2>
+                <p className="text-foreground/70">Review configuration and fund your orchestrator</p>
               </div>
 
               {/* System Info */}
@@ -433,16 +583,67 @@ export default function SubmitPage() {
                 </p>
               </div>
 
+              {/* Budget and Owner Address */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="budget">Budget (HBAR) *</Label>
+                  <Input
+                    id="budget"
+                    type="number"
+                    step="0.001"
+                    min={totalCost}
+                    placeholder={`Minimum: ${totalCost.toFixed(3)} HBAR`}
+                    value={formData.budget}
+                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-foreground/60 mt-2">
+                    Fund the orchestrator to enable evaluations. Minimum: ${totalCost.toFixed(3)} ({Math.floor(parseFloat(formData.budget || "0") / totalCost)} evaluations)
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="ownerAddress">Owner Address *</Label>
+                  <Input
+                    id="ownerAddress"
+                    placeholder="0.0.xxxxx (Hedera Account ID)"
+                    value={formData.ownerAddress}
+                    onChange={(e) => setFormData({ ...formData, ownerAddress: e.target.value })}
+                    className="mt-1.5"
+                  />
+                  <p className="text-xs text-foreground/60 mt-2">
+                    The Hedera account that will own and control this orchestrator
+                  </p>
+                </div>
+              </div>
+
+              {/* Orchestrator Creation Result */}
+              {orchestratorResult && (
+                <div className="p-6 rounded-lg bg-green-500/10 border border-green-500/30">
+                  <h4 className="font-medium mb-2 text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Orchestrator Created Successfully!
+                  </h4>
+                  <div className="space-y-2 text-sm text-foreground/70">
+                    <p><strong>System ID:</strong> {orchestratorResult.system.id}</p>
+                    <p><strong>Status:</strong> {orchestratorResult.system.status}</p>
+                    <p><strong>Budget:</strong> {orchestratorResult.system.budget.total} HBAR</p>
+                    <p><strong>Available Evaluations:</strong> {orchestratorResult.system.budget.remainingEvaluations}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="p-4 rounded-lg bg-brand-cyan/5 border border-brand-cyan/20">
                 <h4 className="font-medium mb-2 text-brand-cyan flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
                   What happens next?
                 </h4>
                 <ul className="space-y-1 text-sm text-foreground/70">
-                  <li>✓ Your judge system will be created with a unique API endpoint</li>
+                  <li>✓ Orchestrator will be created and funded on Hedera</li>
+                  <li>✓ HCS topic will be initialized for multi-agent communication</li>
+                  <li>✓ Ownership will be assigned to your Hedera account</li>
                   <li>✓ You can submit content for evaluation anytime via API or web interface</li>
                   <li>✓ Each evaluation will use your configured judges and criteria</li>
-                  <li>✓ Results are available instantly through the API response or dashboard</li>
                 </ul>
               </div>
             </div>
@@ -458,11 +659,30 @@ export default function SubmitPage() {
 
           <Button
             onClick={handleNext}
-            disabled={!canProceed()}
+            disabled={!canProceed() || isCreatingOrchestrator}
             className="bg-brand-purple hover:bg-brand-purple/90 gap-2"
           >
-            {currentStep === 4 ? "Create Judge System" : currentStep === 3 ? "Skip Test & Continue" : "Continue"}
-            <ArrowRight className="w-4 h-4" />
+            {isCreatingOrchestrator ? (
+              <>
+                <Sparkles className="w-4 h-4 animate-spin" />
+                Creating Orchestrator...
+              </>
+            ) : currentStep === 4 ? (
+              <>
+                Create & Fund Orchestrator
+                <ArrowRight className="w-4 h-4" />
+              </>
+            ) : currentStep === 3 ? (
+              <>
+                Skip Test & Continue
+                <ArrowRight className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                Continue
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </Button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Star, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -60,10 +61,13 @@ export function JudgeCard({ judge, onSelect, onViewDetails, selected }: JudgeCar
 
       {/* Avatar */}
       <div className="relative h-48 overflow-hidden">
-        <img
-          src={judge.avatar || `/placeholder.svg?height=200&width=400&query=${judge.name} avatar`}
+        <Image
+          src={judge.avatar || '/placeholder.svg'}
           alt={judge.name}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          priority={false}
         />
         <div className="absolute inset-0 bg-linear-to-t from-surface-1 to-transparent" />
       </div>

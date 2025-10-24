@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { Clock, Star } from "lucide-react"
 
 const recentJudgments = [
@@ -27,7 +28,7 @@ const recentJudgments = [
   },
 ]
 
-export function RecentJudgments() {
+function RecentJudgmentsComponent() {
   return (
     <div className="space-y-4">
       {recentJudgments.map((judgment) => (
@@ -60,3 +61,5 @@ export function RecentJudgments() {
     </div>
   )
 }
+
+export const RecentJudgments = memo(RecentJudgmentsComponent)

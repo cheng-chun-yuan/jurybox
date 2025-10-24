@@ -1,15 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, lazy, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { AppNav } from "@/components/layout/app-nav"
 import { MarketplaceHeader } from "@/components/marketplace/marketplace-header"
 import { MarketplaceFilters } from "@/components/marketplace/marketplace-filters"
 import { JudgeGrid } from "@/components/marketplace/judge-grid"
-import { JudgeDetailModal } from "@/components/judge-detail-modal"
 import { JudgeSelector } from "@/components/judge-selector"
 import { useMarketplaceFilters } from "@/hooks/use-marketplace-filters"
 import { useJudgeSelection } from "@/hooks/use-judge-selection"
+
+// Lazy load heavy modal component
+const JudgeDetailModal = lazy(() => import("@/components/judge-detail-modal").then(mod => ({ default: mod.JudgeDetailModal })))
 
 // Mock data for judges
 const allJudges = [
@@ -139,7 +141,7 @@ const allJudges = [
     price: 0.028,
     specialties: ["Business", "Strategy", "Marketing"],
     color: "purple" as const,
-    avatar: "/business-strategist-avatar.jpg",
+    avatar: "/placeholder-user.jpg",
     bio: "MBA with 12 years of experience in business strategy and market analysis. I help entrepreneurs validate ideas and refine their business models.",
     expertise: [
       "Business model validation",
@@ -167,7 +169,7 @@ const allJudges = [
     price: 0.022,
     specialties: ["Writing", "Content", "Copywriting"],
     color: "cyan" as const,
-    avatar: "/content-writer-avatar.jpg",
+    avatar: "/placeholder-user.jpg",
     bio: "Professional writer and editor with expertise in content strategy and persuasive copywriting. I help writers craft compelling narratives.",
     expertise: [
       "Content structure and flow",
@@ -199,7 +201,7 @@ const allJudges = [
     price: 0.032,
     specialties: ["Data", "Analytics", "ML"],
     color: "gold" as const,
-    avatar: "/data-scientist-avatar.jpg",
+    avatar: "/placeholder-user.jpg",
     trending: true,
     bio: "PhD in Statistics with expertise in machine learning and data analysis. I provide rigorous evaluation of data projects and analytical approaches.",
     expertise: [
@@ -256,16 +258,18 @@ export default function MarketplacePage() {
         }}
         onViewDetails={setDetailJudge}
       />
-      <JudgeDetailModal
-        judge={detailJudge}
-        open={!!detailJudge}
-        onClose={() => setDetailJudge(null)}
-        onSelect={(id) => {
-          const judge = allJudges.find((j) => j.id === id)
-          if (judge) selectJudge(judge)
-        }}
-        selected={detailJudge ? isSelected(detailJudge.id) : false}
-      />
+      <Suspense fallback={null}>
+        <JudgeDetailModal
+          judge={detailJudge}
+          open={!!detailJudge}
+          onClose={() => setDetailJudge(null)}
+          onSelect={(id) => {
+            const judge = allJudges.find((j) => j.id === id)
+            if (judge) selectJudge(judge)
+          }}
+          selected={detailJudge ? isSelected(detailJudge.id) : false}
+        />
+      </Suspense>
       <JudgeSelector
         selectedJudges={selectedJudges}
         onRemove={removeJudge}

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Star, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -52,11 +53,15 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: J
 
         {/* Header with Avatar */}
         <div className="flex items-start gap-6 mb-6">
-          <img
-            src={judge.avatar || `/placeholder.svg?height=120&width=120&query=${judge.name} avatar`}
-            alt={judge.name}
-            className="w-24 h-24 rounded-xl object-cover"
-          />
+          <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0">
+            <Image
+              src={judge.avatar || '/placeholder.svg'}
+              alt={judge.name}
+              fill
+              className="object-cover"
+              sizes="96px"
+            />
+          </div>
           <div className="flex-1">
             <h2 className="text-3xl font-bold mb-1">{judge.name}</h2>
             <p className={`text-lg mb-2 ${colorClasses[judge.color]}`}>{judge.title}</p>

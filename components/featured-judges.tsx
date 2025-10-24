@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+import { memo } from "react"
 import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -39,7 +41,7 @@ const judges = [
   },
 ]
 
-export function FeaturedJudges() {
+function FeaturedJudgesComponent() {
   return (
     <div className="grid md:grid-cols-3 gap-6">
       {judges.map((judge) => (
@@ -55,7 +57,13 @@ export function FeaturedJudges() {
         >
           {/* Avatar */}
           <div className="relative h-48 overflow-hidden">
-            <img src={judge.avatar || "/placeholder.svg"} alt={judge.name} className="w-full h-full object-cover" />
+            <Image
+              src={judge.avatar || "/placeholder.svg"}
+              alt={judge.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
             <div className="absolute inset-0 bg-linear-to-t from-surface-1 to-transparent" />
           </div>
 
@@ -111,3 +119,5 @@ export function FeaturedJudges() {
     </div>
   )
 }
+
+export const FeaturedJudges = memo(FeaturedJudgesComponent)

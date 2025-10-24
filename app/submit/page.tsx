@@ -73,7 +73,7 @@ export default function SubmitPage() {
     setIsCreatingOrchestrator(true)
 
     try {
-      const response = await fetch('/api/orchestrator/create', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orchestrator/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -115,7 +115,7 @@ export default function SubmitPage() {
     setTestResults(null)
 
     try {
-      const response = await fetch('/api/orchestrator/test', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orchestrator/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

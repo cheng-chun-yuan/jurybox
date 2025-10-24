@@ -74,7 +74,7 @@ export default function CreateAgentPage() {
       const uploadFormData = new FormData()
       uploadFormData.append("file", file)
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/upload`, {
         method: "POST",
         body: uploadFormData,
       })
@@ -105,7 +105,7 @@ export default function CreateAgentPage() {
       console.log("Creating agent with ERC-8004 registration...")
 
       // Call API to register agent on-chain
-      const response = await fetch("/api/agents/register", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/agents/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

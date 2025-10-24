@@ -8,7 +8,7 @@ import type { Agent, JudgmentRequest, JudgmentResult } from '@/types/agent'
 import { getHCSService, type AgentMessage, type EvaluationRound } from './hcs-communication'
 import { ConsensusAlgorithms, type ConsensusResult } from './consensus-algorithms'
 import { getX402Service } from '@/lib/x402/payment-service'
-import { getRegistryService } from '@/lib/erc8004/registry-service'
+import { getViemRegistryService } from '@/lib/erc8004/viem-registry-service'
 
 export interface OrchestratorConfig {
   maxDiscussionRounds: number
@@ -32,7 +32,7 @@ export interface EvaluationProgress {
 export class MultiAgentOrchestrator {
   private hcsService = getHCSService()
   private x402Service = getX402Service()
-  private registryService = getRegistryService()
+  private registryService = getViemRegistryService()
 
   /**
    * Execute complete multi-agent evaluation workflow

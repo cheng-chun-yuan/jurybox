@@ -1,11 +1,10 @@
 "use client"
 
 import Image from "next/image"
-import { Star, Award } from "lucide-react"
+import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface JudgeDetailModalProps {
   judge: {
@@ -53,7 +52,7 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: J
 
         {/* Header with Avatar */}
         <div className="flex items-start gap-6 mb-6">
-          <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0">
+          <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0">
             <Image
               src={judge.avatar || '/placeholder.svg'}
               alt={judge.name}
@@ -90,64 +89,46 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: J
           ))}
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="about" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="expertise">Expertise</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews</TabsTrigger>
-          </TabsList>
+        {/* Content */}
+        <div className="space-y-4">
+          {/* About Section */}
+          <div className="p-4 rounded-lg bg-surface-1 border border-border/50">
+            <h3 className="text-lg font-bold mb-3 text-brand-purple">About</h3>
+            <p className="text-foreground/80 leading-relaxed text-sm">{judge.bio}</p>
+          </div>
 
-          <TabsContent value="about" className="space-y-4">
-            <div>
-              <h3 className="text-lg font-bold mb-2">Biography</h3>
-              <p className="text-foreground/70 leading-relaxed">{judge.bio}</p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                <Award className="w-5 h-5 text-brand-gold" />
-                Achievements
-              </h3>
-              <ul className="space-y-2">
-                {judge.achievements.map((achievement, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-brand-purple mt-1">•</span>
-                    <span className="text-foreground/70">{achievement}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="expertise" className="space-y-4">
-            <div className="grid gap-3">
-              {judge.expertise.map((item, index) => (
-                <div key={index} className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                  <p className="text-foreground/80">{item}</p>
+          {/* Expertise Section */}
+          <div className="p-4 rounded-lg bg-surface-1 border border-border/50">
+            <h3 className="text-lg font-bold mb-3 text-brand-cyan">Areas of Expertise</h3>
+            <div className="grid gap-2">
+              {judge.expertise.slice(0, 5).map((item, index) => (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  <div className="w-1.5 h-1.5 bg-brand-cyan rounded-full shrink-0"></div>
+                  <span className="text-foreground/80">{item}</span>
                 </div>
               ))}
             </div>
-          </TabsContent>
+          </div>
 
-          <TabsContent value="reviews" className="space-y-4">
-            {judge.sampleReviews.map((review, index) => (
-              <div key={index} className="p-4 rounded-lg bg-surface-2 border border-border/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
+          {/* Reviews Section */}
+          <div className="p-4 rounded-lg bg-surface-1 border border-border/50">
+            <h3 className="text-lg font-bold mb-3 text-brand-gold">Recent Reviews</h3>
+            <div className="space-y-3">
+              {judge.sampleReviews.slice(0, 3).map((review, index) => (
+                <div key={index} className="border-l-2 border-brand-gold/30 pl-3">
+                  <div className="flex items-center gap-2 mb-1">
                     <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
-                      <span className="font-mono font-bold">{review.rating}</span>
+                      <Star className="w-3 h-3 text-brand-gold fill-brand-gold" />
+                      <span className="font-mono font-bold text-sm">{review.rating}</span>
                     </div>
-                    <span className="text-sm text-foreground/60">by {review.author}</span>
+                    <span className="text-xs text-foreground/60">by {review.author}</span>
                   </div>
-                  <span className="text-xs text-foreground/60">{review.date}</span>
+                  <p className="text-foreground/70 text-sm">{review.comment}</p>
                 </div>
-                <p className="text-foreground/70">{review.comment}</p>
-              </div>
-            ))}
-          </TabsContent>
-        </Tabs>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 pt-4 border-t border-border/50">

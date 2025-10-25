@@ -48,7 +48,7 @@ export function AppNav({ currentPath = '/', showCreateAgent = true }: AppNavProp
           <SignInButton variant="ghost" size="sm" />
           {showCreateAgent && (
             <Button size="sm" className="bg-brand-purple hover:bg-brand-purple/90" asChild>
-              <Link href="/create-agent">Create Agent</Link>
+              <Link href="/create-judge">Create Agent</Link>
             </Button>
           )}
         </div>

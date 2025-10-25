@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Sparkles, Upload, FileText, CheckCircle2, ArrowRight, ArrowLeft, Star } from "lucide-react"
+import { Sparkles, Upload, FileText, CheckCircle2, ArrowRight, ArrowLeft, Star, Copy, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,6 +12,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { SignInButton } from "@/components/auth/sign-in-button"
 import { Logo } from "@/components/logo"
 import { useJudgesByIds } from "@/hooks/use-judges-api"
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { transferHBAR } from "@/lib/hedera/hedera-utils"
 import type { Judge } from "@/types/judge"
 
 const steps = [
@@ -24,7 +26,13 @@ const steps = [
 export default function SubmitPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { address, isConnected } = useAccount()
+  const { writeContract, data: hash, isPending: isWritePending, error: writeError } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  })
   const [currentStep, setCurrentStep] = useState(1)
+  const [maxRounds, setMaxRounds] = useState(2)
   const [formData, setFormData] = useState({
     systemName: "",
     description: "",
@@ -38,6 +46,11 @@ export default function SubmitPage() {
   const [testResults, setTestResults] = useState<any>(null)
   const [isCreatingOrchestrator, setIsCreatingOrchestrator] = useState(false)
   const [orchestratorResult, setOrchestratorResult] = useState<any>(null)
+  const [isLoadingHederaAccount, setIsLoadingHederaAccount] = useState(false)
+  const [aaWalletInfo, setAaWalletInfo] = useState<any>(null)
+  const [isFundingWallet, setIsFundingWallet] = useState(false)
+  const [fundingTxHash, setFundingTxHash] = useState<string | null>(null)
+  const [hashscanUrl, setHashscanUrl] = useState<string | null>(null)
 
   // Get selected judge IDs from URL params
   const judgeIds = useMemo(() => {
@@ -55,6 +68,43 @@ export default function SubmitPage() {
 
   const totalCost = selectedJudges.reduce((sum, judge) => sum + judge.price, 0)
 
+  // Function to derive Hedera account from EVM address
+  const deriveHederaAccount = async (evmAddress: string) => {
+    setIsLoadingHederaAccount(true)
+    try {
+      const response = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/accounts/${evmAddress}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch Hedera account')
+      }
+      const data = await response.json()
+      
+      if (data.account) {
+        setFormData(prev => ({
+          ...prev,
+          ownerAddress: data.account
+        }))
+      } else {
+        throw new Error('No Hedera account found for this address')
+      }
+    } catch (error) {
+      console.error('Error deriving Hedera account:', error)
+      // Keep the EVM address as fallback
+      setFormData(prev => ({
+        ...prev,
+        ownerAddress: evmAddress
+      }))
+    } finally {
+      setIsLoadingHederaAccount(false)
+    }
+  }
+
+  // Auto-derive Hedera account when wallet connects
+  useEffect(() => {
+    if (isConnected && address && !formData.ownerAddress) {
+      deriveHederaAccount(address)
+    }
+  }, [isConnected, address, formData.ownerAddress])
+
   const handleNext = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
@@ -68,17 +118,22 @@ export default function SubmitPage() {
     setIsCreatingOrchestrator(true)
 
     try {
+      // Step 1: Create orchestrator (no agent wallet needed, will fund backend account directly)
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orchestrator/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          judgeIds: selectedJudges.map(j => j.id),
-          systemName: formData.systemName,
-          criteria: formData.criteria,
-          budget: parseFloat(formData.budget),
-          ownerAddress: formData.ownerAddress,
+          userAddress: address,
+          config: {
+            maxDiscussionRounds: 3,
+            roundTimeout: 60000,
+            enableDiscussion: true,
+          },
+          systemPrompt: `You are an AI orchestrator managing a panel of expert judges for content evaluation.`,
+          network: "testnet",
+          initialFunding: 0
         }),
       })
 
@@ -88,12 +143,9 @@ export default function SubmitPage() {
         throw new Error(data.error || 'Failed to create orchestrator')
       }
 
+      // Store orchestrator info for funding step
+      setAaWalletInfo(data)
       setOrchestratorResult(data)
-
-      // Show success and redirect after delay
-      setTimeout(() => {
-        router.push(`/systems/${data.system.id}`)
-      }, 2000)
 
     } catch (error) {
       console.error('Error creating orchestrator:', error)
@@ -102,6 +154,99 @@ export default function SubmitPage() {
       setIsCreatingOrchestrator(false)
     }
   }
+
+  const [isTransferring, setIsTransferring] = useState(false)
+
+  const handleFundWallet = async () => {
+    if (!address) return
+
+    setIsTransferring(true)
+    try {
+      const fundingAmount = parseFloat(formData.budget)
+
+      // Backend account ID that will receive the funds
+      const backendAccountId = '0.0.7125500'
+
+      console.log(`Funding orchestrator ${aaWalletInfo?.orchestratorId} with ${fundingAmount} HBAR`)
+      console.log(`Recipient Account ID (Backend): ${backendAccountId}`)
+      console.log(`From EVM Address: ${address}`)
+
+      // Transfer HBAR directly to backend account
+      const result = await transferHBAR(backendAccountId, fundingAmount, 'testnet', address)
+
+      if (result.success) {
+        console.log('Transfer successful:', result)
+        setFundingTxHash(result.transactionId || '')
+        setHashscanUrl(result.hashscanUrl || '')
+
+        // Notify backend about successful funding
+        if (aaWalletInfo?.orchestratorId) {
+          await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orchestrator/fund`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orchestratorId: aaWalletInfo.orchestratorId,
+              amount: fundingAmount,
+              userAddress: address,
+              transactionHash: result.transactionId
+            }),
+          })
+        }
+
+        // Redirect after successful transfer
+        setTimeout(() => {
+          router.push(`/orchestrator/${aaWalletInfo?.orchestratorId}`)
+        }, 2000)
+      } else {
+        alert(`Funding failed: ${result.error}`)
+      }
+
+    } catch (error) {
+      console.error('Error initiating funding:', error)
+      alert('Failed to initiate funding transaction')
+    } finally {
+      setIsTransferring(false)
+    }
+  }
+
+  // Handle transaction confirmation
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      setFundingTxHash(hash)
+      setIsFundingWallet(false)
+      
+      // Notify backend about successful funding
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orchestrator/fund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orchestratorId: aaWalletInfo?.orchestratorId,
+          amount: parseFloat(formData.budget),
+          userAddress: address,
+          transactionHash: hash
+        }),
+      }).then(() => {
+        // Redirect after successful funding
+        setTimeout(() => {
+          router.push(`/orchestrator/${aaWalletInfo?.orchestratorId}`)
+        }, 2000)
+      }).catch(error => {
+        console.error('Error notifying backend:', error)
+      })
+    }
+  }, [isConfirmed, hash, aaWalletInfo, formData.budget, address, router])
+
+  // Handle write errors
+  useEffect(() => {
+    if (writeError) {
+      setIsFundingWallet(false)
+      alert(`Transaction failed: ${writeError.message}`)
+    }
+  }, [writeError])
 
   const handleRunTest = async () => {
     if (!formData.testContent) return
@@ -116,9 +261,10 @@ export default function SubmitPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          judgeIds: selectedJudges.map(j => j.id),
-          testContent: formData.testContent,
-          criteria: formData.criteria,
+          agentIds: selectedJudges.map(j => j.id),
+          content: formData.testContent,
+          maxRounds: maxRounds,
+          consensusAlgorithm: "weighted_average"
         }),
       })
 
@@ -128,7 +274,8 @@ export default function SubmitPage() {
         throw new Error(data.error || 'Failed to run test evaluation')
       }
 
-      setTestResults(data.evaluation)
+      setTestResults(data)
+      console.log('Test evaluation response:', data)
 
     } catch (error) {
       console.error('Error running test:', error)
@@ -389,6 +536,36 @@ export default function SubmitPage() {
               {/* Test Results */}
               {testResults && (
                 <div className="space-y-4 mt-6">
+                  {/* HCS Topic Info */}
+                  {testResults.topicId && (
+                    <div className="p-4 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium text-brand-cyan mb-1 flex items-center gap-2">
+                              <Sparkles className="w-4 h-4" />
+                              HCS Topic Created
+                            </h4>
+                            <p className="text-sm text-foreground/70">All consensus messages are recorded on Hedera Consensus Service</p>
+                          </div>
+                          <a
+                            href={`https://hashscan.io/testnet/topic/${testResults.topicId}/messages`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 bg-brand-cyan/20 hover:bg-brand-cyan/30 text-brand-cyan rounded-lg transition-colors whitespace-nowrap"
+                          >
+                            <span className="font-mono text-sm">{testResults.topicId}</span>
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                        <div className="text-xs text-foreground/60 bg-surface-2/50 p-3 rounded border border-border/30">
+                          <strong className="text-brand-cyan">💡 Tip:</strong> Click the topic ID above to view all consensus messages in real-time on HashScan.
+                          You can watch the judge agents communicate and reach consensus on-chain!
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Consensus Summary */}
                   <div className="p-6 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
                     <div className="grid md:grid-cols-3 gap-4">
@@ -397,36 +574,48 @@ export default function SubmitPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
                           <span className="text-3xl font-mono font-bold text-brand-gold">
-                            {testResults.averageScore.toFixed(1)}
+                            {testResults.averageScore?.toFixed(1) ?? testResults.consensusScore?.toFixed(1) ?? 'N/A'}
                           </span>
                         </div>
                       </div>
                       <div>
                         <span className="text-sm text-foreground/60">Confidence</span>
                         <div className="text-2xl font-mono font-bold text-brand-cyan mt-1">
-                          {(testResults.confidence * 100).toFixed(0)}%
+                          {testResults.confidence ? (testResults.confidence * 100).toFixed(0) + '%' : 'N/A'}
                         </div>
                       </div>
                       <div>
-                        <span className="text-sm text-foreground/60">Convergence</span>
+                        <span className="text-sm text-foreground/60">Rounds Completed</span>
                         <div className="text-2xl font-mono font-bold text-brand-purple mt-1">
-                          {testResults.convergenceRounds} rounds
+                          {testResults.convergenceRounds ?? testResults.roundsCompleted ?? testResults.totalRounds ?? 'N/A'}
                         </div>
                       </div>
                     </div>
                     <div className="mt-4 pt-4 border-t border-border/30">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-foreground/60">Algorithm:</span>
-                        <span className="font-mono font-medium">{testResults.algorithm}</span>
+                        <span className="font-mono font-medium">{testResults.algorithm ?? testResults.consensusAlgorithm ?? 'weighted_average'}</span>
                       </div>
-                      <div className="flex items-center justify-between text-sm mt-2">
-                        <span className="text-foreground/60">Variance:</span>
-                        <span className="font-mono font-medium">{testResults.variance?.toFixed(3) || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm mt-2">
-                        <span className="text-foreground/60">HCS Topic ID:</span>
-                        <span className="font-mono text-xs">{testResults.topicId}</span>
-                      </div>
+                      {testResults.variance !== undefined && (
+                        <div className="flex items-center justify-between text-sm mt-2">
+                          <span className="text-foreground/60">Variance:</span>
+                          <span className="font-mono font-medium">{testResults.variance.toFixed(3)}</span>
+                        </div>
+                      )}
+                      {testResults.topicId && (
+                        <div className="flex items-center justify-between text-sm mt-2">
+                          <span className="text-foreground/60">HCS Topic:</span>
+                          <a
+                            href={`https://hashscan.io/testnet/topic/${testResults.topicId}/messages`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-xs text-brand-cyan hover:text-brand-cyan/80 underline flex items-center gap-1"
+                          >
+                            {testResults.topicId}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -492,39 +681,47 @@ export default function SubmitPage() {
                   )}
 
                   {/* Judge Feedback */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold">Final Judge Evaluations</h3>
-                    {testResults.judges.map((judge: any) => (
-                      <Card key={judge.id} className="p-4 bg-surface-1">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-medium">{judge.name}</h4>
-                          <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
-                            <span className="font-mono font-bold">{judge.score.toFixed(1)}</span>
+                  {testResults.judges && testResults.judges.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold">Final Judge Evaluations</h3>
+                      {testResults.judges.map((judge: any) => (
+                        <Card key={judge.id ?? judge.agentId} className="p-4 bg-surface-1">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium">{judge.name ?? `Judge ${judge.agentId ?? judge.id}`}</h4>
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
+                              <span className="font-mono font-bold">{judge.score?.toFixed(1) ?? 'N/A'}</span>
+                            </div>
                           </div>
-                        </div>
-                        <p className="text-sm text-foreground/70 mb-3">{judge.feedback}</p>
-                        <div className="grid md:grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <span className="font-medium text-brand-cyan">Strengths:</span>
-                            <ul className="mt-1 space-y-1 text-foreground/70">
-                              {judge.strengths.map((s: string, idx: number) => (
-                                <li key={idx}>• {s}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <span className="font-medium text-brand-purple">Improvements:</span>
-                            <ul className="mt-1 space-y-1 text-foreground/70">
-                              {judge.improvements.map((i: string, idx: number) => (
-                                <li key={idx}>• {i}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                          {judge.feedback && <p className="text-sm text-foreground/70 mb-3">{judge.feedback}</p>}
+                          {(judge.strengths || judge.improvements) && (
+                            <div className="grid md:grid-cols-2 gap-3 text-sm">
+                              {judge.strengths && judge.strengths.length > 0 && (
+                                <div>
+                                  <span className="font-medium text-brand-cyan">Strengths:</span>
+                                  <ul className="mt-1 space-y-1 text-foreground/70">
+                                    {judge.strengths.map((s: string, idx: number) => (
+                                      <li key={idx}>• {s}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {judge.improvements && judge.improvements.length > 0 && (
+                                <div>
+                                  <span className="font-medium text-brand-purple">Improvements:</span>
+                                  <ul className="mt-1 space-y-1 text-foreground/70">
+                                    {judge.improvements.map((i: string, idx: number) => (
+                                      <li key={idx}>• {i}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -623,31 +820,151 @@ export default function SubmitPage() {
 
                 <div>
                   <Label htmlFor="ownerAddress">Owner Address *</Label>
-                  <Input
-                    id="ownerAddress"
-                    placeholder="0.0.xxxxx (Hedera Account ID)"
-                    value={formData.ownerAddress}
-                    onChange={(e) => setFormData({ ...formData, ownerAddress: e.target.value })}
-                    className="mt-1.5"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="ownerAddress"
+                      placeholder={isLoadingHederaAccount ? "Deriving Hedera account..." : "0.0.xxxxx (Hedera Account ID)"}
+                      value={formData.ownerAddress}
+                      onChange={(e) => setFormData({ ...formData, ownerAddress: e.target.value })}
+                      className="mt-1.5"
+                      disabled={isLoadingHederaAccount}
+                    />
+                    {isLoadingHederaAccount && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-cyan"></div>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs text-foreground/60 mt-2">
-                    The Hedera account that will own and control this orchestrator
+                    {isConnected ? 
+                      "Automatically derived from your connected wallet address" : 
+                      "The Hedera account that will own and control this orchestrator"
+                    }
                   </p>
+                  {isConnected && address && (
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-brand-cyan">
+                        EVM Address: {address}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deriveHederaAccount(address)}
+                        disabled={isLoadingHederaAccount}
+                        className="text-xs h-6 px-2"
+                      >
+                        {isLoadingHederaAccount ? "Deriving..." : "Refresh"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Orchestrator Creation Result */}
-              {orchestratorResult && (
-                <div className="p-6 rounded-lg bg-green-500/10 border border-green-500/30">
-                  <h4 className="font-medium mb-2 text-green-400 flex items-center gap-2">
+              {aaWalletInfo && !fundingTxHash && (
+                <div className="p-6 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                  <h4 className="font-medium mb-4 text-blue-400 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5" />
                     Orchestrator Created Successfully!
                   </h4>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-foreground/60">Orchestrator ID</p>
+                        <p className="font-mono text-foreground">{aaWalletInfo.orchestratorId}</p>
+                      </div>
+                      <div>
+                        <p className="text-foreground/60">Backend Account ID</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-mono text-foreground">0.0.7125500</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigator.clipboard.writeText('0.0.7125500')}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <h5 className="font-medium text-amber-400 mb-2">Next Step: Fund Your Orchestrator</h5>
+                    <p className="text-sm text-foreground/70 mb-4">
+                      Your orchestrator needs HBAR to run evaluations. Please fund the backend account with at least {totalCost.toFixed(3)} HBAR.
+                    </p>
+                    
+                    {/* Transaction Status */}
+                    {(isWritePending || isConfirming) && (
+                      <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                          <span className="text-blue-400">
+                            {isWritePending ? "Waiting for wallet confirmation..." : "Transaction confirming..."}
+                          </span>
+                        </div>
+                        {hash && (
+                          <p className="text-xs text-foreground/60 mt-1">
+                            Transaction: <span className="font-mono">{hash}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3">
+                      <Button
+                        onClick={handleFundWallet}
+                        disabled={isTransferring || isWritePending || isConfirming || isFundingWallet}
+                        className="bg-amber-500 hover:bg-amber-600 text-white"
+                      >
+                        {isTransferring ? "Processing Hedera Transfer..." :
+                         isWritePending ? "Confirm in Wallet..." : 
+                         isConfirming ? "Confirming Transaction..." :
+                         isFundingWallet ? "Processing..." : 
+                         `Fund with ${formData.budget} HBAR`}
+                      </Button>
+                      
+                      <div className="text-xs text-foreground/60">
+                        <p>
+                          {isWritePending ? "Please approve the transaction in your wallet" :
+                           isConfirming ? "Transaction is being confirmed on Hedera..." :
+                           "This will open your wallet to approve the transaction"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Funding Success */}
+              {fundingTxHash && (
+                <div className="p-6 rounded-lg bg-green-500/10 border border-green-500/30">
+                  <h4 className="font-medium mb-2 text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Wallet Funded Successfully!
+                  </h4>
                   <div className="space-y-2 text-sm text-foreground/70">
-                    <p><strong>System ID:</strong> {orchestratorResult.system.id}</p>
-                    <p><strong>Status:</strong> {orchestratorResult.system.status}</p>
-                    <p><strong>Budget:</strong> {orchestratorResult.system.budget.total} HBAR</p>
-                    <p><strong>Available Evaluations:</strong> {orchestratorResult.system.budget.remainingEvaluations}</p>
+                    <p><strong>Transaction Hash:</strong> <span className="font-mono">{fundingTxHash}</span></p>
+                    <p><strong>Amount:</strong> {formData.budget} HBAR</p>
+                    {hashscanUrl && (
+                      <div className="flex items-center gap-2">
+                        <span><strong>View on Hashscan:</strong></span>
+                        <a 
+                          href={hashscanUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Open Transaction
+                        </a>
+                      </div>
+                    )}
+                    <p className="text-green-400">Redirecting to orchestrator page...</p>
                   </div>
                 </div>
               )}
@@ -658,9 +975,10 @@ export default function SubmitPage() {
                   What happens next?
                 </h4>
                 <ul className="space-y-1 text-sm text-foreground/70">
-                  <li>✓ Orchestrator will be created and funded on Hedera</li>
-                  <li>✓ HCS topic will be initialized for multi-agent communication</li>
-                  <li>✓ Ownership will be assigned to your Hedera account</li>
+                  <li>✓ Orchestrator system will be initialized on Hedera</li>
+                  <li>✓ HCS topic will be set up for multi-agent communication</li>
+                  <li>✓ You'll fund the backend account to enable evaluations</li>
+                  <li>✓ Backend will manage the orchestrator using its private key</li>
                   <li>✓ You can submit content for evaluation anytime via API or web interface</li>
                   <li>✓ Each evaluation will use your configured judges and criteria</li>
                 </ul>
@@ -678,7 +996,7 @@ export default function SubmitPage() {
 
           <Button
             onClick={handleNext}
-            disabled={!canProceed() || isCreatingOrchestrator}
+            disabled={!canProceed() || isCreatingOrchestrator || aaWalletInfo}
             className="bg-brand-purple hover:bg-brand-purple/90 gap-2"
           >
             {isCreatingOrchestrator ? (
@@ -686,9 +1004,14 @@ export default function SubmitPage() {
                 <Sparkles className="w-4 h-4 animate-spin" />
                 Creating Orchestrator...
               </>
+            ) : aaWalletInfo ? (
+              <>
+                Orchestrator Created
+                <CheckCircle2 className="w-4 h-4" />
+              </>
             ) : currentStep === 4 ? (
               <>
-                Create & Fund Orchestrator
+                Create Orchestrator
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : currentStep === 3 ? (

@@ -111,7 +111,7 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: J
           </div>
 
           {/* Reviews Section */}
-          <div className="p-4 rounded-lg bg-surface-1 border border-border/50">
+          {/* <div className="p-4 rounded-lg bg-surface-1 border border-border/50">
             <h3 className="text-lg font-bold mb-3 text-brand-gold">Recent Reviews</h3>
             <div className="space-y-3">
               {judge.sampleReviews.slice(0, 3).map((review, index) => (
@@ -127,7 +127,7 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: J
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Action Buttons */}

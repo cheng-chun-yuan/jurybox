@@ -314,29 +314,113 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json()
         if (data.messages && data.messages.length > 0) {
-          // Parse and decode new messages
-          const parsedMessages = data.messages.map((msg: any) => {
+          // First, aggregate chunked messages
+          const messageChunks = new Map<string, any[]>()
+
+          data.messages.forEach((msg: any) => {
+            const decodedMessage = atob(msg.message)
+
+            // Check if message is chunked (format: "content" or chunked JSON)
+            const chunkMatch = decodedMessage.match(/^(\d+)\/(\d+)$/) // matches "1/2", "2/2" etc at start
+
+            if (chunkMatch) {
+              // This is a chunk indicator, skip it
+              return
+            }
+
+            // Try to detect if this is part of a chunked message by checking the CHUNK field
+            let isChunk = false
+            let chunkInfo = { current: 1, total: 1 }
+
             try {
-              // Decode base64 message
-              const decodedMessage = atob(msg.message)
-              const parsedData = JSON.parse(decodedMessage)
+              // Check if the decoded message has chunk info at the end
+              const lines = decodedMessage.split('\n')
+              const lastLine = lines[lines.length - 1]?.trim()
+              const chunkPattern = /(\d+)\/(\d+)$/
+              const match = lastLine?.match(chunkPattern)
 
-              // Parse consensus timestamp correctly (format: seconds.nanoseconds)
-              const [seconds, nanoseconds] = msg.consensus_timestamp.split('.')
-              const timestampMs = parseInt(seconds) * 1000 + parseInt(nanoseconds) / 1000000
+              if (match) {
+                isChunk = true
+                chunkInfo = { current: parseInt(match[1]), total: parseInt(match[2]) }
 
-              return {
-                ...msg,
-                parsedData,
-                timestamp: new Date(timestampMs),
-                sequenceNumber: msg.sequence_number,
-                uniqueId: `${topicId}-${msg.sequence_number}` // Unique identifier
+                // Store chunk
+                const chunkKey = `${msg.sequence_number - chunkInfo.current + 1}` // Base sequence
+                if (!messageChunks.has(chunkKey)) {
+                  messageChunks.set(chunkKey, [])
+                }
+                messageChunks.get(chunkKey)!.push({
+                  ...msg,
+                  decodedMessage: decodedMessage.replace(chunkPattern, '').trim(),
+                  chunkInfo
+                })
               }
             } catch (e) {
-              console.error('Error parsing message:', e, msg)
-              return null
+              // Not a chunked message
             }
-          }).filter(Boolean) // Remove null entries
+
+            if (!isChunk) {
+              // Regular non-chunked message, process immediately
+              const key = `single-${msg.sequence_number}`
+              messageChunks.set(key, [{
+                ...msg,
+                decodedMessage,
+                chunkInfo: { current: 1, total: 1 }
+              }])
+            }
+          })
+
+          // Now parse aggregated messages
+          const parsedMessages: any[] = []
+
+          messageChunks.forEach((chunks) => {
+            try {
+              // Sort chunks by chunk number
+              chunks.sort((a, b) => a.chunkInfo.current - b.chunkInfo.current)
+
+              // Check if we have all chunks
+              const totalChunks = chunks[0].chunkInfo.total
+              if (chunks.length !== totalChunks) {
+                console.warn(`Incomplete chunked message: have ${chunks.length}/${totalChunks} chunks`)
+                return
+              }
+
+              // Combine all chunks
+              const combinedMessage = chunks.map(c => c.decodedMessage).join('')
+              const firstChunk = chunks[0]
+
+              let parsedData = {}
+
+              // Try to parse JSON, use empty object if it fails
+              try {
+                parsedData = JSON.parse(combinedMessage)
+              } catch (jsonError) {
+                console.warn(`Invalid JSON in aggregated message, using fallback:`, jsonError instanceof Error ? jsonError.message : jsonError)
+                // Store raw message as fallback
+                parsedData = {
+                  type: 'error',
+                  rawMessage: combinedMessage.substring(0, 100),
+                  error: 'Invalid JSON format'
+                }
+              }
+
+              // Parse consensus timestamp correctly (format: seconds.nanoseconds)
+              const [seconds, nanoseconds] = firstChunk.consensus_timestamp.split('.')
+              const timestampMs = parseInt(seconds) * 1000 + parseInt(nanoseconds) / 1000000
+
+              parsedMessages.push({
+                ...firstChunk,
+                parsedData,
+                timestamp: new Date(timestampMs),
+                sequenceNumber: firstChunk.sequence_number,
+                uniqueId: `${topicId}-${firstChunk.sequence_number}`,
+                isAggregated: totalChunks > 1,
+                totalChunks
+              })
+            } catch (e) {
+              console.error('Error processing message chunks:', e)
+            }
+          })
+
 
           if (parsedMessages.length > 0) {
             // Check for duplicates before adding using Map for better performance

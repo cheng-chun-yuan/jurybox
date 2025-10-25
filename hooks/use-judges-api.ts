@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import type { Judge, JudgesApiResponse } from "@/types/judge"
 
 /**
@@ -8,49 +8,33 @@ import type { Judge, JudgesApiResponse } from "@/types/judge"
  * Used in submit page to get selected judges
  */
 export function useJudgesByIds(ids: number[]) {
-  const [judges, setJudges] = useState<Judge[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!ids || ids.length === 0) {
-      setJudges([])
-      setLoading(false)
-      return
-    }
-
-    const fetchJudges = async () => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/batch?ids=${ids.join(',')}`
-        )
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch judges: ${response.statusText}`)
-        }
-
-        const data: JudgesApiResponse = await response.json()
-
-        if (data.success) {
-          setJudges(data.data)
-        } else {
-          throw new Error('Failed to fetch judges from API')
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred')
-        setJudges([])
-      } finally {
-        setLoading(false)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['judges', 'batch', ids.join(',')],
+    queryFn: async () => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/batch?ids=${ids.join(',')}`
+      )
+      if (!response.ok) {
+        throw new Error(`Failed to fetch judges: ${response.statusText}`)
       }
-    }
 
-    fetchJudges()
-  }, [ids.join(',')]) // Stringify array for stable dependency
+      const result: JudgesApiResponse = await response.json()
 
-  return { judges, loading, error }
+      if (!result.success) {
+        throw new Error('Failed to fetch judges from API')
+      }
+
+      return result.data
+    },
+    enabled: ids.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  return {
+    judges: data || [],
+    loading: isLoading,
+    error: error?.message || null
+  }
 }
 
 /**
@@ -62,49 +46,39 @@ export function useAllJudges(options?: {
   trending?: boolean
   search?: string
 }) {
-  const [judges, setJudges] = useState<Judge[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['judges', 'all', options],
+    queryFn: async () => {
+      // Build query params
+      const params = new URLSearchParams()
+      if (options?.specialty) params.append('specialty', options.specialty)
+      if (options?.trending) params.append('trending', 'true')
+      if (options?.search) params.append('search', options.search)
 
-  useEffect(() => {
-    const fetchJudges = async () => {
-      setLoading(true)
-      setError(null)
+      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges${params.toString() ? `?${params.toString()}` : ''}`
 
-      try {
-        // Build query params
-        const params = new URLSearchParams()
-        if (options?.specialty) params.append('specialty', options.specialty)
-        if (options?.trending) params.append('trending', 'true')
-        if (options?.search) params.append('search', options.search)
-
-        const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges${params.toString() ? `?${params.toString()}` : ''}`
-
-        const response = await fetch(url)
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch judges: ${response.statusText}`)
-        }
-
-        const data: JudgesApiResponse = await response.json()
-
-        if (data.success) {
-          setJudges(data.data)
-        } else {
-          throw new Error('Failed to fetch judges from API')
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred')
-        setJudges([])
-      } finally {
-        setLoading(false)
+      const response = await fetch(url)
+      console.log('response', response)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch judges: ${response.statusText}`)
       }
-    }
 
-    fetchJudges()
-  }, [options?.specialty, options?.trending, options?.search])
+      const result: JudgesApiResponse = await response.json()
 
-  return { judges, loading, error }
+      if (!result.success) {
+        throw new Error('Failed to fetch judges from API')
+      }
+
+      return result.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  return {
+    judges: data || [],
+    loading: isLoading,
+    error: error?.message || null
+  }
 }
 
 /**
@@ -112,47 +86,32 @@ export function useAllJudges(options?: {
  * Can be used for judge detail pages
  */
 export function useJudgeById(id: number | null) {
-  const [judge, setJudge] = useState<Judge | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['judges', id],
+    queryFn: async () => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/${id}`
+      )
 
-  useEffect(() => {
-    if (!id) {
-      setJudge(null)
-      setLoading(false)
-      return
-    }
-
-    const fetchJudge = async () => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/${id}`
-        )
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch judge: ${response.statusText}`)
-        }
-
-        const data = await response.json()
-
-        if (data.success) {
-          setJudge(data.data)
-        } else {
-          throw new Error('Failed to fetch judge from API')
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred')
-        setJudge(null)
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch judge: ${response.statusText}`)
       }
-    }
 
-    fetchJudge()
-  }, [id])
+      const result = await response.json()
 
-  return { judge, loading, error }
+      if (!result.success) {
+        throw new Error('Failed to fetch judge from API')
+      }
+
+      return result.data as Judge
+    },
+    enabled: id !== null,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  return {
+    judge: data || null,
+    loading: isLoading,
+    error: error?.message || null
+  }
 }

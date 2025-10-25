@@ -23,32 +23,6 @@ import { Logo } from "@/components/logo"
 import Link from "next/link"
 import { getAccountBalance } from "@/lib/hedera/hedera-utils"
 
-// Mock orchestrator data - in real app, fetch from API
-const mockOrchestrator = {
-  id: "orch-001",
-  name: "Academic Review Orchestrator",
-  description: "Specialized in academic research and peer review evaluations",
-  systemPrompt: "You are an AI orchestrator managing a panel of expert judges for academic content evaluation. Focus on scholarly rigor, methodology, and research quality.",
-  status: "active",
-  balance: 15.5,
-  evaluations: 8,
-  rounds: { completed: 24, total: 24, current: 0 },
-  createdAt: "2024-01-15",
-  lastUsed: "2 hours ago",
-  wallet: {
-    address: "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
-    accountId: "0.0.7117762"
-  },
-  config: {
-    maxDiscussionRounds: 3,
-    roundTimeout: 60000,
-    consensusAlgorithm: "weighted_average",
-    enableDiscussion: true,
-    convergenceThreshold: 0.5,
-    outlierDetection: true
-  }
-}
-
 export default function OrchestratorPage() {
   const params = useParams()
   const router = useRouter()
@@ -104,14 +78,8 @@ export default function OrchestratorPage() {
         })
       } catch (error) {
         console.error('Error fetching orchestrator:', error)
-        // Use mock data as fallback
-        setOrchestrator(mockOrchestrator)
-        setEditData({
-          name: mockOrchestrator.name,
-          description: mockOrchestrator.description,
-          systemPrompt: mockOrchestrator.systemPrompt,
-          config: { ...mockOrchestrator.config }
-        })
+        alert('Failed to load orchestrator. Please try again.')
+        router.push('/dashboard')
       } finally {
         setIsLoadingOrchestrator(false)
       }

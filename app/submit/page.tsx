@@ -51,17 +51,26 @@ export default function SubmitPage() {
   const [isFundingWallet, setIsFundingWallet] = useState(false)
   const [fundingTxHash, setFundingTxHash] = useState<string | null>(null)
   const [hashscanUrl, setHashscanUrl] = useState<string | null>(null)
+  const [hcsMessages, setHcsMessages] = useState<any[]>([])
+  const [isPolling, setIsPolling] = useState(false)
+  const [lastSequenceNumber, setLastSequenceNumber] = useState<number>(0)
+  const [finalConsensusScore, setFinalConsensusScore] = useState<number | null>(null)
 
   // Get selected judge IDs from URL params
   const judgeIds = useMemo(() => {
     const judgeIdsParam = searchParams.get('judges')
     if (!judgeIdsParam) {
-      // Redirect back to marketplace if no judges selected
-      router.push('/marketplace')
       return []
     }
     return judgeIdsParam.split(',').map(Number)
-  }, [searchParams, router])
+  }, [searchParams])
+
+  // Redirect to marketplace if no judges selected
+  useEffect(() => {
+    if (judgeIds.length === 0) {
+      router.push('/marketplace')
+    }
+  }, [judgeIds, router])
 
   // Fetch judges from backend API
   const { judges: selectedJudges, loading: loadingJudges, error: judgesError } = useJudgesByIds(judgeIds)
@@ -277,6 +286,11 @@ export default function SubmitPage() {
       setTestResults(data)
       console.log('Test evaluation response:', data)
 
+      // Start polling HCS messages if we have a topic ID
+      if (data.topicId) {
+        setIsPolling(true)
+      }
+
     } catch (error) {
       console.error('Error running test:', error)
       alert(error instanceof Error ? error.message : 'Failed to run test evaluation')
@@ -284,6 +298,103 @@ export default function SubmitPage() {
       setIsTestingResults(false)
     }
   }
+
+  // Poll HCS topic messages - only fetch new messages
+  const pollHCSMessages = async (topicId: string) => {
+    try {
+      // Build URL with sequence number filter to get only new messages
+      let url = `https://testnet.mirrornode.hedera.com/api/v1/topics/${topicId}/messages?order=asc&limit=100`
+      if (lastSequenceNumber > 0) {
+        url += `&sequencenumber=gt:${lastSequenceNumber}`
+      }
+
+      const response = await fetch(url)
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.messages && data.messages.length > 0) {
+          // Parse and decode new messages
+          const parsedMessages = data.messages.map((msg: any) => {
+            try {
+              // Decode base64 message
+              const decodedMessage = atob(msg.message)
+              const parsedData = JSON.parse(decodedMessage)
+
+              // Parse consensus timestamp correctly (format: seconds.nanoseconds)
+              const [seconds, nanoseconds] = msg.consensus_timestamp.split('.')
+              const timestampMs = parseInt(seconds) * 1000 + parseInt(nanoseconds) / 1000000
+
+              return {
+                ...msg,
+                parsedData,
+                timestamp: new Date(timestampMs),
+                sequenceNumber: msg.sequence_number,
+                uniqueId: `${topicId}-${msg.sequence_number}` // Unique identifier
+              }
+            } catch (e) {
+              console.error('Error parsing message:', e, msg)
+              return null
+            }
+          }).filter(Boolean) // Remove null entries
+
+          if (parsedMessages.length > 0) {
+            // Check for duplicates before adding using Map for better performance
+            setHcsMessages(prev => {
+              const messageMap = new Map(prev.map(m => [m.uniqueId, m]))
+
+              let addedCount = 0
+              parsedMessages.forEach(msg => {
+                if (!messageMap.has(msg.uniqueId)) {
+                  messageMap.set(msg.uniqueId, msg)
+                  addedCount++
+                }
+              })
+
+              if (addedCount > 0) {
+                console.log(`Adding ${addedCount} new HCS messages (filtered ${parsedMessages.length - addedCount} duplicates)`)
+                // Convert back to array sorted by sequence number
+                return Array.from(messageMap.values()).sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+              }
+              return prev
+            })
+
+            // Update last sequence number to the highest we've seen
+            const maxSequence = Math.max(...parsedMessages.map(m => m.sequenceNumber))
+            setLastSequenceNumber(prev => Math.max(prev, maxSequence))
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error polling HCS messages:', error)
+    }
+  }
+
+  // Effect to poll HCS messages - starts immediately and continues polling
+  useEffect(() => {
+    if (isPolling && testResults?.topicId) {
+      // Start polling immediately
+      pollHCSMessages(testResults.topicId)
+
+      // Continue polling every 2 seconds for real-time updates
+      const interval = setInterval(() => {
+        pollHCSMessages(testResults.topicId)
+      }, 2000)
+
+      return () => clearInterval(interval)
+    }
+  }, [isPolling, testResults?.topicId])
+
+  // Extract final consensus score from HCS messages
+  useEffect(() => {
+    if (hcsMessages.length > 0) {
+      // Look for the final consensus message (type: 'final')
+      const finalMessage = hcsMessages.find(msg => msg.parsedData?.type === 'final')
+      if (finalMessage?.parsedData?.data?.score !== undefined) {
+        setFinalConsensusScore(finalMessage.parsedData.data.score)
+        console.log('Final consensus score extracted:', finalMessage.parsedData.data.score)
+      }
+    }
+  }, [hcsMessages])
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -414,6 +525,38 @@ export default function SubmitPage() {
                 ))}
               </div>
 
+              {/* Max Rounds Selection */}
+              <div className="p-6 rounded-lg bg-surface-2 border border-border/50">
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="maxRounds" className="text-base font-semibold">Maximum Discussion Rounds</Label>
+                    <p className="text-sm text-foreground/60 mt-1">
+                      Number of rounds judges can discuss to reach consensus
+                    </p>
+                  </div>
+                  <div>
+                    <Input
+                      id="maxRounds"
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={maxRounds}
+                      onChange={(e) => setMaxRounds(parseInt(e.target.value) || 1)}
+                      className={`w-32 ${maxRounds > 5 || maxRounds < 1 ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    />
+                    {maxRounds > 5 && (
+                      <p className="text-xs text-red-500 mt-1.5">Maximum rounds cannot exceed 5</p>
+                    )}
+                    {maxRounds < 1 && (
+                      <p className="text-xs text-red-500 mt-1.5">Minimum rounds is 1</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-foreground/60">
+                    More rounds allow judges to refine their evaluations through discussion, but may increase processing time.
+                  </p>
+                </div>
+              </div>
+
               <div className="p-4 rounded-lg bg-brand-purple/5 border border-brand-purple/20">
                 <p className="text-sm text-foreground/70">
                   <strong>Note:</strong> You're creating a reusable judge system. Once created, you can submit content for evaluation anytime via API or web interface.
@@ -536,7 +679,7 @@ export default function SubmitPage() {
               {/* Test Results */}
               {testResults && (
                 <div className="space-y-4 mt-6">
-                  {/* HCS Topic Info */}
+                  {/* HCS Topic Info - Show immediately when topic is created */}
                   {testResults.topicId && (
                     <div className="p-4 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30">
                       <div className="flex flex-col gap-3">
@@ -566,6 +709,183 @@ export default function SubmitPage() {
                     </div>
                   )}
 
+                  {/* Real-time HCS Messages Chat */}
+                  {testResults.topicId && hcsMessages.length > 0 && (
+                    <div className="p-6 rounded-lg bg-surface-2 border border-border/50">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-brand-cyan" />
+                          Live Judge Discussion
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-xs text-foreground/60">Live • {hcsMessages.length} messages</span>
+                        </div>
+                      </div>
+                      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                        {hcsMessages.map((msg, idx) => {
+                          const type = msg.parsedData?.type
+                          const data = msg.parsedData?.data
+                          const agentName = msg.parsedData?.agentName || 'Judge'
+                          const roundNumber = msg.parsedData?.roundNumber
+
+                          // Determine message styling based on type
+                          const getTypeStyle = () => {
+                            switch(type) {
+                              case 'initial':
+                              case 'score':
+                                return { bg: 'bg-blue-500/10', border: 'border-blue-500/30', badge: 'bg-blue-500/20 text-blue-400' }
+                              case 'discussion':
+                                return { bg: 'bg-purple-500/10', border: 'border-purple-500/30', badge: 'bg-purple-500/20 text-purple-400' }
+                              case 'adjustment':
+                                return { bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', badge: 'bg-cyan-500/20 text-cyan-400' }
+                              case 'final':
+                                return { bg: 'bg-green-500/10', border: 'border-green-500/30', badge: 'bg-green-500/20 text-green-400' }
+                              default:
+                                return { bg: 'bg-surface-1', border: 'border-border/30', badge: 'bg-foreground/10 text-foreground/70' }
+                            }
+                          }
+
+                          const style = getTypeStyle()
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`p-4 rounded-lg ${style.bg} border ${style.border}`}
+                            >
+                              {/* Header */}
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-foreground">
+                                    {agentName}
+                                  </span>
+                                  {type && (
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${style.badge} capitalize`}>
+                                      {type}
+                                    </span>
+                                  )}
+                                  {roundNumber !== undefined && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-foreground/10 text-foreground/70">
+                                      Round {roundNumber}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-foreground/60">
+                                  {msg.timestamp.toLocaleTimeString()}
+                                </span>
+                              </div>
+
+                              {/* Initial Score or Score type */}
+                              {(type === 'initial' || type === 'score') && data?.score !== undefined && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Star className="w-5 h-5 text-brand-gold fill-brand-gold" />
+                                    <span className="text-xl font-mono font-bold text-brand-gold">
+                                      {typeof data.score === 'number' ? data.score.toFixed(2) : data.score}
+                                    </span>
+                                    {data.confidence && (
+                                      <span className="text-xs text-foreground/60">
+                                        ({(data.confidence * 100).toFixed(0)}% confidence)
+                                      </span>
+                                    )}
+                                  </div>
+                                  {data.reasoning && (
+                                    <p className="text-sm text-foreground/80 pl-7">{data.reasoning}</p>
+                                  )}
+                                  {data.aspects && (
+                                    <div className="mt-2 pl-7">
+                                      <p className="text-xs font-medium text-foreground/70 mb-1">Scoring Aspects:</p>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {Object.entries(data.aspects).map(([aspect, score]: [string, any]) => (
+                                          <div key={aspect} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-surface-1 border border-border/30">
+                                            <span className="text-foreground/70">{aspect}</span>
+                                            <span className="font-mono font-medium">{typeof score === 'number' ? score.toFixed(2) : score}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Discussion */}
+                              {type === 'discussion' && data?.discussion && (
+                                <div className="pl-1">
+                                  <p className="text-sm text-foreground/80 italic">"{data.discussion}"</p>
+                                </div>
+                              )}
+
+                              {/* Adjustment */}
+                              {type === 'adjustment' && data?.originalScore !== undefined && data?.adjustedScore !== undefined && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <Star className="w-4 h-4 text-foreground/40 fill-foreground/40" />
+                                      <span className="font-mono text-foreground/60 line-through">
+                                        {data.originalScore.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    <span className="text-foreground/60">→</span>
+                                    <div className="flex items-center gap-2">
+                                      <Star className="w-5 h-5 text-brand-cyan fill-brand-cyan" />
+                                      <span className="text-lg font-mono font-bold text-brand-cyan">
+                                        {data.adjustedScore.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {data.reasoning && (
+                                    <p className="text-sm text-foreground/70 italic">{data.reasoning}</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Final Consensus */}
+                              {type === 'final' && data?.score !== undefined && (
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
+                                    <span className="text-2xl font-mono font-bold text-brand-gold">
+                                      {typeof data.score === 'number' ? data.score.toFixed(2) : data.score}
+                                    </span>
+                                    <span className="text-sm text-foreground/60 ml-2">Final Consensus</span>
+                                  </div>
+                                  {data.reasoning && (() => {
+                                    try {
+                                      const reasoningData = JSON.parse(data.reasoning)
+                                      return (
+                                        <div className="text-sm space-y-1 text-foreground/70">
+                                          {reasoningData.individualScores && (
+                                            <div className="mt-2">
+                                              <p className="font-medium text-foreground/80 mb-1">Individual Scores:</p>
+                                              <div className="flex gap-3 flex-wrap">
+                                                {Object.entries(reasoningData.individualScores).map(([id, score]: [string, any]) => (
+                                                  <span key={id} className="px-2 py-1 rounded bg-surface-1 border border-border/30 font-mono text-xs">
+                                                    Judge {id}: {typeof score === 'number' ? score.toFixed(2) : score}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {reasoningData.totalRounds && (
+                                            <p className="text-xs text-foreground/60 mt-2">
+                                              Consensus reached after {reasoningData.totalRounds} rounds
+                                            </p>
+                                          )}
+                                        </div>
+                                      )
+                                    } catch (e) {
+                                      return <p className="text-sm text-foreground/70">{data.reasoning}</p>
+                                    }
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Consensus Summary */}
                   <div className="p-6 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
                     <div className="grid md:grid-cols-3 gap-4">
@@ -574,8 +894,15 @@ export default function SubmitPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
                           <span className="text-3xl font-mono font-bold text-brand-gold">
-                            {testResults.averageScore?.toFixed(1) ?? testResults.consensusScore?.toFixed(1) ?? 'N/A'}
+                            {finalConsensusScore !== null
+                              ? finalConsensusScore.toFixed(2)
+                              : testResults.averageScore?.toFixed(2) ?? testResults.consensusScore?.toFixed(2) ?? 'N/A'}
                           </span>
+                          {finalConsensusScore !== null && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400">
+                              Final
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div>

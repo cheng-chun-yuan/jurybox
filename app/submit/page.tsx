@@ -32,7 +32,7 @@ export default function SubmitPage() {
     hash,
   })
   const [currentStep, setCurrentStep] = useState(1)
-  const [maxRounds, setMaxRounds] = useState(2)
+  const [maxRounds, setMaxRounds] = useState(3)
   const [formData, setFormData] = useState({
     systemName: "",
     description: "",
@@ -55,6 +55,7 @@ export default function SubmitPage() {
   const [isPolling, setIsPolling] = useState(false)
   const [lastSequenceNumber, setLastSequenceNumber] = useState<number>(0)
   const [finalConsensusScore, setFinalConsensusScore] = useState<number | null>(null)
+  const [currentRound, setCurrentRound] = useState<number>(0)
 
   // Get selected judge IDs from URL params
   const judgeIds = useMemo(() => {
@@ -384,7 +385,7 @@ export default function SubmitPage() {
     }
   }, [isPolling, testResults?.topicId])
 
-  // Extract final consensus score from HCS messages
+  // Extract final consensus score and track current round from HCS messages
   useEffect(() => {
     if (hcsMessages.length > 0) {
       // Look for the final consensus message (type: 'final')
@@ -393,6 +394,15 @@ export default function SubmitPage() {
         setFinalConsensusScore(finalMessage.parsedData.data.score)
         console.log('Final consensus score extracted:', finalMessage.parsedData.data.score)
       }
+
+      // Track the highest round number from messages
+      const maxRoundNumber = Math.max(
+        0,
+        ...hcsMessages
+          .filter(msg => msg.parsedData?.roundNumber !== undefined)
+          .map(msg => msg.parsedData.roundNumber)
+      )
+      setCurrentRound(maxRoundNumber)
     }
   }, [hcsMessages])
 
@@ -886,65 +896,57 @@ export default function SubmitPage() {
                     </div>
                   )}
 
-                  {/* Consensus Summary */}
-                  <div className="p-6 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div>
-                        <span className="text-sm text-foreground/60">Consensus Score</span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
-                          <span className="text-3xl font-mono font-bold text-brand-gold">
-                            {finalConsensusScore !== null
-                              ? finalConsensusScore.toFixed(2)
-                              : testResults.averageScore?.toFixed(2) ?? testResults.consensusScore?.toFixed(2) ?? 'N/A'}
-                          </span>
-                          {finalConsensusScore !== null && (
+                  {/* Consensus Summary - Only show if we have final consensus */}
+                  {finalConsensusScore !== null && (
+                    <div className="p-6 rounded-lg bg-linear-to-br from-brand-purple/10 to-brand-cyan/10 border border-brand-purple/30">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-sm text-foreground/60">Consensus Score</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Star className="w-6 h-6 text-brand-gold fill-brand-gold" />
+                            <span className="text-3xl font-mono font-bold text-brand-gold">
+                              {finalConsensusScore.toFixed(2)}
+                            </span>
                             <span className="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400">
                               Final
                             </span>
-                          )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-sm text-foreground/60">Rounds Completed</span>
+                          <div className="text-2xl font-mono font-bold text-brand-purple mt-1">
+                            {currentRound}/{maxRounds}
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <span className="text-sm text-foreground/60">Confidence</span>
-                        <div className="text-2xl font-mono font-bold text-brand-cyan mt-1">
-                          {testResults.confidence ? (testResults.confidence * 100).toFixed(0) + '%' : 'N/A'}
+                      <div className="mt-4 pt-4 border-t border-border/30">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-foreground/60">Algorithm:</span>
+                          <span className="font-mono font-medium">{testResults.algorithm ?? testResults.consensusAlgorithm ?? 'weighted_average'}</span>
                         </div>
-                      </div>
-                      <div>
-                        <span className="text-sm text-foreground/60">Rounds Completed</span>
-                        <div className="text-2xl font-mono font-bold text-brand-purple mt-1">
-                          {testResults.convergenceRounds ?? testResults.roundsCompleted ?? testResults.totalRounds ?? 'N/A'}
-                        </div>
+                        {testResults.variance !== undefined && (
+                          <div className="flex items-center justify-between text-sm mt-2">
+                            <span className="text-foreground/60">Variance:</span>
+                            <span className="font-mono font-medium">{testResults.variance.toFixed(3)}</span>
+                          </div>
+                        )}
+                        {testResults.topicId && (
+                          <div className="flex items-center justify-between text-sm mt-2">
+                            <span className="text-foreground/60">HCS Topic:</span>
+                            <a
+                              href={`https://hashscan.io/testnet/topic/${testResults.topicId}/messages`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-xs text-brand-cyan hover:text-brand-cyan/80 underline flex items-center gap-1"
+                            >
+                              {testResults.topicId}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-border/30">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-foreground/60">Algorithm:</span>
-                        <span className="font-mono font-medium">{testResults.algorithm ?? testResults.consensusAlgorithm ?? 'weighted_average'}</span>
-                      </div>
-                      {testResults.variance !== undefined && (
-                        <div className="flex items-center justify-between text-sm mt-2">
-                          <span className="text-foreground/60">Variance:</span>
-                          <span className="font-mono font-medium">{testResults.variance.toFixed(3)}</span>
-                        </div>
-                      )}
-                      {testResults.topicId && (
-                        <div className="flex items-center justify-between text-sm mt-2">
-                          <span className="text-foreground/60">HCS Topic:</span>
-                          <a
-                            href={`https://hashscan.io/testnet/topic/${testResults.topicId}/messages`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-xs text-brand-cyan hover:text-brand-cyan/80 underline flex items-center gap-1"
-                          >
-                            {testResults.topicId}
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  )}
 
                   {/* HCS Message Timeline */}
                   {testResults.hcsMessages && testResults.hcsMessages.length > 0 && (

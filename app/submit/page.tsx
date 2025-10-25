@@ -344,7 +344,7 @@ export default function SubmitPage() {
               const messageMap = new Map(prev.map(m => [m.uniqueId, m]))
 
               let addedCount = 0
-              parsedMessages.forEach(msg => {
+              parsedMessages.forEach((msg: any) => {
                 if (!messageMap.has(msg.uniqueId)) {
                   messageMap.set(msg.uniqueId, msg)
                   addedCount++
@@ -360,7 +360,7 @@ export default function SubmitPage() {
             })
 
             // Update last sequence number to the highest we've seen
-            const maxSequence = Math.max(...parsedMessages.map(m => m.sequenceNumber))
+            const maxSequence = Math.max(...parsedMessages.map((m: any) => m.sequenceNumber))
             setLastSequenceNumber(prev => Math.max(prev, maxSequence))
           }
         }

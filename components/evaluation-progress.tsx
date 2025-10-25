@@ -86,7 +86,7 @@ export function EvaluationProgressTracker({ progress, consensusResult }: Evaluat
                 }`}
               >
                 <div
-                  className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                  className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                     isCompleted
                       ? 'bg-brand-cyan text-white'
                       : isCurrent

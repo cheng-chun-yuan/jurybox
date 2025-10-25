@@ -30,9 +30,11 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-3">
             <SignInButton variant="ghost" size="sm" />
-            <Button size="sm" className="bg-brand-purple hover:bg-brand-purple/90">
-              Get Started
-            </Button>
+            <Link href="/marketplace">
+              <Button size="sm" className="bg-brand-purple hover:bg-brand-purple/90">
+                Get Started
+              </Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -59,13 +61,17 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" className="bg-brand-purple hover:bg-brand-purple/90 glow-purple group">
-              Start Judging
-              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button size="lg" variant="outline" className="border-brand-cyan/30 hover:border-brand-cyan bg-transparent">
-              Browse Judges
-            </Button>
+            <Link href="/marketplace">
+              <Button size="lg" className="bg-brand-purple hover:bg-brand-purple/90 glow-purple group">
+                Start Judging
+                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+            <Link href="/marketplace">
+              <Button size="lg" variant="outline" className="border-brand-cyan/30 hover:border-brand-cyan bg-transparent">
+                Browse Judges
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -117,10 +123,12 @@ export default function LandingPage() {
               <h2 className="text-3xl md:text-4xl font-bold mb-2">Featured Judges</h2>
               <p className="text-foreground/70">Top-rated AI experts ready to evaluate your work</p>
             </div>
-            <Button variant="ghost" className="text-brand-cyan hover:text-brand-cyan/80">
-              View All
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
+            <Link href="/marketplace">
+              <Button variant="ghost" className="text-brand-cyan hover:text-brand-cyan/80">
+                View All
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
           </div>
 
           <FeaturedJudges />

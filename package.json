@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:clean": "rm -rf .next && next dev",
     "lint": "eslint .",
     "start": "next start"
   },
@@ -55,6 +56,7 @@
     "input-otp": "1.4.1",
     "langchain": "^1.0.1",
     "lucide-react": "^0.454.0",
+    "mysql2": "^3.15.3",
     "next": "16.0.0",
     "next-themes": "^0.4.6",
     "react": "19.2.0",

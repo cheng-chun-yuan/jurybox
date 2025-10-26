@@ -4,6 +4,15 @@
 
 The feedback system now interacts directly with the Hedera blockchain via the Reputation Registry smart contract. Users sign transactions with their wallet to submit feedback on-chain.
 
+**Contract Addresses:**
+```typescript
+export const CONTRACT_ADDRESSES = {
+  IdentityRegistry: '0x4e79162582ec945aa0d5266009edef0f42b407e5',
+  ReputationRegistry: '0xa9ed2f34b8342ac1b60bf4469cd704231af26021',
+  ValidationRegistry: '0xa00c82e8c4096f10e5ea49798cf7fb047c2241ce',
+} as const
+```
+
 ## Key Features
 
 ### 1. **Smart Contract Integration**
@@ -27,56 +36,67 @@ const REPUTATION_REGISTRY_ABI = [{
 }]
 ```
 
-### 2. **Feedback Flow**
+### 2. **Feedback Flow (Simplified)**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. User fills out feedback form                             │
+│ 1. Backend: Run orchestrator test                           │
+│    POST /api/orchestrator/test                              │
+│    → Returns test results with feedbackAuth for each judge  │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. User reviews judge evaluations                           │
+│    - Views consensus score and individual judge feedback    │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 3. User fills out feedback form for specific judge          │
 │    - Star rating (1-5)                                       │
 │    - Tags (max 2, optional)                                  │
 │    - Comment (optional)                                      │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ 2. Convert rating to score (1-5 → 0-100)                    │
+│ 4. Frontend: Convert rating to score (1-5 → 0-100)         │
 │    score = floor((rating / 5) * 100)                        │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ 3. Upload feedback to IPFS                                  │
+│ 5. Frontend: Upload user feedback to IPFS                   │
 │    POST /api/upload-feedback                                │
 │    → Returns: ipfsUri, ipfsHash                             │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ 4. Get feedback authorization from agent owner              │
-│    POST /api/judges/:judgeId/feedback-auth                  │
-│    → Returns: feedbackAuth (signature)                      │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│ 5. Convert tags to bytes32                                  │
+│ 6. Frontend: Convert tags to bytes32                        │
 │    tag1 = keccak256(toHex(tags[0] || 'general'))           │
 │    tag2 = keccak256(toHex(tags[1] || 'evaluation'))        │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ 6. Call smart contract via wagmi                            │
+│ 7. Frontend: Get feedbackAuth from test results             │
+│    judge.feedbackAuth (already in testResults)              │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 8. Frontend: Call ReputationRegistry smart contract         │
+│    Address: 0xa9ed2f34b8342ac1b60bf4469cd704231af26021      │
 │    writeFeedback({ address, abi, functionName, args })     │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ 7. User signs transaction in wallet                         │
+│ 9. User signs transaction in wallet                         │
 │    (isPending state)                                         │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ 8. Transaction confirms on-chain                            │
+│ 10. Transaction confirms on-chain                           │
 │    (isConfirming → isSuccess)                               │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ 9. Show HashScan link to view transaction                   │
+│ 11. Show HashScan link to view transaction                  │
 │    https://hashscan.io/testnet/transaction/{txHash}         │
 └─────────────────────────────────────────────────────────────┘
 ```

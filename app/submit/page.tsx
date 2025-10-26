@@ -16,6 +16,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagm
 import { transferHBAR } from "@/lib/hedera/hedera-utils"
 import type { Judge } from "@/types/judge"
 import { keccak256, toHex } from "viem"
+import { CONTRACT_ADDRESSES } from "@/lib/contracts/addresses"
 
 const REPUTATION_REGISTRY_ABI = [
   {
@@ -589,7 +590,7 @@ export default function SubmitPage() {
     }
   }, [hcsMessages])
 
-  const handleSubmitFeedback = async (judgeId: number, registryAgentId: number) => {
+  const handleSubmitFeedback = async (judgeId: number) => {
     const feedback = judgeFeedback[judgeId]
     if (!feedback || !feedback.rating) {
       alert('Please provide a rating')
@@ -601,15 +602,34 @@ export default function SubmitPage() {
       return
     }
 
+    // Get judge data from test results
+    const judge = testResults?.judges?.find((j: any) => (j.id ?? j.agentId) === judgeId)
+    if (!judge) {
+      alert('Judge data not found in test results')
+      return
+    }
+
+    // Check if feedbackAuth is available from test results
+    if (!judge.feedbackAuth || !judge.ipfsUri || !judge.ipfsHash || !judge.registryAgentId) {
+      alert('Feedback authorization not available. Please run the test evaluation first.')
+      return
+    }
+
     setCurrentFeedbackJudgeId(judgeId)
 
     try {
       // Step 1: Convert rating (1-5) to score (0-100)
       const score = Math.floor((feedback.rating / 5) * 100)
 
-      // Step 2: Upload feedback to IPFS
+      // Step 2: Convert tags to bytes32
+      const tags = feedback.tags || []
+      const tag1 = tags[0] ? keccak256(toHex(tags[0])) : keccak256(toHex('general'))
+      const tag2 = tags[1] ? keccak256(toHex(tags[1])) : keccak256(toHex('evaluation'))
+
+      // Step 3: Update feedback on IPFS with user's rating and comment
       const feedbackData = {
         rating: feedback.rating,
+        score: score,
         comment: feedback.comment,
         tags: feedback.tags || [],
         judgeId,
@@ -630,46 +650,19 @@ export default function SubmitPage() {
 
       const { ipfsUri, ipfsHash } = await ipfsResponse.json()
 
-      // Step 3: Get feedback auth signature from backend (agent owner)
-      const authResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/${judgeId}/feedback-auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userAddress: address,
-          feedbackHash: ipfsHash
-        }),
-      })
-
-      if (!authResponse.ok) {
-        throw new Error('Failed to get feedback authorization')
-      }
-
-      const { feedbackAuth } = await authResponse.json()
-
-      // Step 4: Convert tags to bytes32
-      const tags = feedback.tags || []
-      const tag1 = tags[0] ? keccak256(toHex(tags[0])) : keccak256(toHex('general'))
-      const tag2 = tags[1] ? keccak256(toHex(tags[1])) : keccak256(toHex('evaluation'))
-
-      // Step 5: Get reputation registry contract address
-      const registryAddress = process.env.NEXT_PUBLIC_REPUTATION_REGISTRY_ADDRESS
-      if (!registryAddress) {
-        throw new Error('Reputation registry address not configured')
-      }
-
-      // Step 6: Call smart contract
+      // Step 4: Call smart contract with feedbackAuth from test results
       writeFeedback({
-        address: registryAddress as `0x${string}`,
+        address: CONTRACT_ADDRESSES.ReputationRegistry as `0x${string}`,
         abi: REPUTATION_REGISTRY_ABI,
         functionName: 'giveFeedback',
         args: [
-          BigInt(registryAgentId),
+          BigInt(judge.registryAgentId),
           score,
           tag1,
           tag2,
           ipfsUri,
           ipfsHash as `0x${string}`,
-          feedbackAuth as `0x${string}`
+          judge.feedbackAuth as `0x${string}`
         ],
       })
 
@@ -1436,8 +1429,8 @@ export default function SubmitPage() {
                                   <div className="flex items-center gap-2">
                                     <Button
                                       size="sm"
-                                      onClick={() => handleSubmitFeedback(judgeId, judge.registryAgentId || judgeId)}
-                                      disabled={!judgeFeedback[judgeId]?.rating || currentFeedbackJudgeId === judgeId}
+                                      onClick={() => handleSubmitFeedback(judgeId)}
+                                      disabled={!judgeFeedback[judgeId]?.rating || currentFeedbackJudgeId === judgeId || !judge.feedbackAuth}
                                       className="bg-brand-purple hover:bg-brand-purple/90"
                                     >
                                       {currentFeedbackJudgeId === judgeId
@@ -1446,6 +1439,9 @@ export default function SubmitPage() {
                                     </Button>
                                     {!isConnected && (
                                       <p className="text-xs text-foreground/60">Connect wallet to submit</p>
+                                    )}
+                                    {!judge.feedbackAuth && (
+                                      <p className="text-xs text-amber-500">Auth pending from test results</p>
                                     )}
                                   </div>
 

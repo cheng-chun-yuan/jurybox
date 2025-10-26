@@ -635,18 +635,44 @@ export default function SubmitPage() {
       return
     }
 
+    // Validate rating range (0-100)
+    if (feedback.rating < 0 || feedback.rating > 100) {
+      alert('Rating must be between 0 and 100')
+      return
+    }
+
+    // Validate feedbackAuth format
+    if (!feedbackAuth.feedbackAuth || !feedbackAuth.feedbackAuth.startsWith('0x')) {
+      alert('Invalid feedback authorization format')
+      console.error('Invalid feedbackAuth:', feedbackAuth.feedbackAuth)
+      return
+    }
+
+    // Check if connected wallet matches the authorized wallet
+    if (feedbackAuth.clientAddress.toLowerCase() !== address.toLowerCase()) {
+      alert(`Wallet mismatch! This feedback auth was issued for ${feedbackAuth.clientAddress}, but you're connected with ${address}. Please switch to the correct wallet.`)
+      return
+    }
+
     setCurrentFeedbackJudgeId(agentId)
 
     try {
-      // Validate rating is 0-100
-      const rating = Math.min(100, Math.max(0, feedback.rating))
+      // Ensure rating is valid uint8 (0-255, but we validate 0-100 above)
+      const rating = Math.min(100, Math.max(0, Math.floor(feedback.rating)))
 
-      console.log('Submitting feedback:', {
-        agentId,
-        rating,
-        comments: feedback.comment,
-        feedbackAuthLength: feedbackAuth.feedbackAuth.length
-      })
+      console.log('=== Submitting Feedback ===')
+      console.log('Agent ID:', agentId)
+      console.log('Rating:', rating)
+      console.log('Comments:', feedback.comment || '(none)')
+      console.log('FeedbackAuth length:', feedbackAuth.feedbackAuth.length)
+      console.log('FeedbackAuth (first 66 chars):', feedbackAuth.feedbackAuth.substring(0, 66))
+      console.log('Contract Address:', CONTRACT_ADDRESSES.ReputationRegistry)
+      console.log('Connected Wallet:', address)
+      console.log('Authorized Wallet:', feedbackAuth.clientAddress)
+      console.log('Expires At:', feedbackAuth.expiresAt)
+      console.log('Chain ID:', feedbackAuth.chainId)
+      console.log('Identity Registry:', feedbackAuth.identityRegistry)
+      console.log('==========================')
 
       // Call smart contract using new submitFeedback function
       writeFeedback({
@@ -662,7 +688,11 @@ export default function SubmitPage() {
       })
 
     } catch (error) {
-      console.error('Error submitting feedback:', error)
+      console.error('❌ Error submitting feedback:', error)
+      if (error instanceof Error) {
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+      }
       alert(error instanceof Error ? error.message : 'Failed to submit feedback')
       setCurrentFeedbackJudgeId(null)
     }
@@ -1100,9 +1130,6 @@ export default function SubmitPage() {
                                       </span>
                                     )}
                                   </div>
-                                  {data.reasoning && (
-                                    <p className="text-sm text-foreground/80 pl-7">{data.reasoning}</p>
-                                  )}
                                   {data.aspects && (
                                     <div className="mt-2 pl-7">
                                       <p className="text-xs font-medium text-foreground/70 mb-1">Scoring Aspects:</p>
@@ -1489,7 +1516,23 @@ export default function SubmitPage() {
                                       <p className="text-xs text-amber-500">⚠️ Connect wallet to submit feedback</p>
                                     )}
                                     {feedbackWriteError && (
-                                      <p className="text-xs text-red-500">❌ Error: {feedbackWriteError.message}</p>
+                                      <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                                        <p className="text-xs text-red-500 font-semibold mb-1">❌ Transaction Failed</p>
+                                        <p className="text-xs text-red-400">{feedbackWriteError.message}</p>
+                                        <details className="mt-2">
+                                          <summary className="text-xs text-red-400 cursor-pointer hover:underline">View Details</summary>
+                                          <pre className="text-xs text-red-300 mt-1 overflow-x-auto bg-black/20 p-2 rounded">
+                                            {JSON.stringify(feedbackWriteError, null, 2)}
+                                          </pre>
+                                        </details>
+                                        <p className="text-xs text-foreground/60 mt-2">
+                                          💡 <strong>Common causes:</strong>
+                                          <br/>• Wallet address mismatch (check console logs)
+                                          <br/>• Expired feedback authorization
+                                          <br/>• Invalid rating or feedbackAuth data
+                                          <br/>• Insufficient gas or network issues
+                                        </p>
+                                      </div>
                                     )}
                                   </div>
 

@@ -33,9 +33,11 @@ interface JudgeDetailModalProps {
   onClose: () => void
   onSelect?: (judgeId: number) => void
   selected?: boolean
+  hasFinalResult?: boolean
+  onSubmitFeedback?: (judgeId: number) => void
 }
 
-export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: JudgeDetailModalProps) {
+export function JudgeDetailModal({ judge, open, onClose, onSelect, selected, hasFinalResult, onSubmitFeedback }: JudgeDetailModalProps) {
   if (!judge) return null
 
   const colorClasses = {
@@ -133,16 +135,32 @@ export function JudgeDetailModal({ judge, open, onClose, onSelect, selected }: J
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 pt-4 border-t border-border/50">
-          <Button
-            className="flex-1 bg-brand-purple hover:bg-brand-purple/90"
-            onClick={() => onSelect?.(judge.id)}
-            variant={selected ? "outline" : "default"}
-          >
-            {selected ? "Selected" : "Select Judge"}
-          </Button>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+          {hasFinalResult ? (
+            <>
+              <Button
+                className="flex-1 bg-brand-cyan hover:bg-brand-cyan/90"
+                onClick={() => onSubmitFeedback?.(judge.id)}
+              >
+                Submit Feedback for Judge
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                className="flex-1 bg-brand-purple hover:bg-brand-purple/90"
+                onClick={() => onSelect?.(judge.id)}
+                variant={selected ? "outline" : "default"}
+              >
+                {selected ? "Selected" : "Select Judge"}
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

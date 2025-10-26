@@ -28,6 +28,8 @@ export default function CreateJudgePage() {
     ipfsUri: string
     txHash: string
     paymentPageUrl: string
+    walletAddress: string
+    evmAddress: string
   } | null>(null)
 
   const [formData, setFormData] = useState({
@@ -169,8 +171,11 @@ export default function CreateJudgePage() {
 
       console.log("✅ Judge registered successfully!")
       console.log("Judge ID:", data.judgeId)
+      console.log("Wallet Address:", data.walletAddress)
+      console.log("EVM Address:", data.evmAddress)
       console.log("Payment Page URL:", data.paymentPageUrl)
       console.log("Registry TX Hash:", data.registryTxHash)
+      console.log("IPFS CID:", data.ipfsCid)
 
       // Store registration result to display below form
       setRegistrationResult({
@@ -179,6 +184,8 @@ export default function CreateJudgePage() {
         ipfsUri: data.ipfsCid ? `ipfs://${data.ipfsCid}` : 'N/A',
         txHash: data.registryTxHash || 'N/A',
         paymentPageUrl: data.paymentPageUrl,
+        walletAddress: data.walletAddress || 'N/A',
+        evmAddress: data.evmAddress || 'N/A',
       })
     } catch (error: any) {
       console.error("Error creating judge:", error)
@@ -556,26 +563,81 @@ export default function CreateJudgePage() {
           {registrationResult && (
             <Card className="p-6 mt-8 bg-brand-cyan/10 border-brand-cyan/30">
               <h2 className="text-2xl font-bold mb-4 text-brand-cyan">✅ Judge Registered Successfully!</h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <Label className="text-foreground/70">Judge ID</Label>
                   <p className="text-lg font-mono">{registrationResult.judgeId}</p>
                 </div>
+
                 <div>
-                  <Label className="text-foreground/70">Payment Page URL</Label>
-                  <p className="text-sm font-mono break-all text-foreground/80">{registrationResult.paymentPageUrl}</p>
+                  <Label className="text-foreground/70">Hedera Wallet</Label>
+                  <p className="text-sm font-mono break-all text-foreground/80 mb-1">
+                    Account ID: {registrationResult.walletAddress || 'N/A'}
+                  </p>
+                  <p className="text-sm font-mono break-all text-foreground/80">
+                    EVM Address: {registrationResult.evmAddress || 'N/A'}
+                  </p>
                 </div>
-                <div>
-                  <Label className="text-foreground/70">IPFS CID</Label>
-                  <p className="text-sm font-mono break-all text-foreground/80">{registrationResult.cid}</p>
+
+                {registrationResult.cid && registrationResult.cid !== 'N/A' && (
+                  <div>
+                    <Label className="text-foreground/70">IPFS Metadata</Label>
+                    <p className="text-sm font-mono break-all text-foreground/80 mb-2">
+                      CID: {registrationResult.cid}
+                    </p>
+                    <a
+                      href={`https://ipfs.io/ipfs/${registrationResult.cid}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-brand-cyan hover:text-brand-cyan/80 underline"
+                    >
+                      View on IPFS Gateway
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                      </svg>
+                    </a>
+                  </div>
+                )}
+
+                {registrationResult.txHash && registrationResult.txHash !== 'N/A' && (
+                  <div className="p-4 bg-brand-purple/10 border border-brand-purple/30 rounded-lg">
+                    <Label className="text-foreground/70">Blockchain Registration</Label>
+                    <p className="text-xs font-mono break-all text-foreground/60 mb-2 mt-1">
+                      {registrationResult.txHash}
+                    </p>
+                    <a
+                      href={`https://hashscan.io/testnet/transaction/${registrationResult.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-brand-purple hover:text-brand-purple/80 underline"
+                    >
+                      View on HashScan
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                      </svg>
+                    </a>
+                  </div>
+                )}
+
+                <div className="pt-2 flex gap-2">
+                  <Button
+                    onClick={() => router.push("/marketplace")}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    Go to Marketplace
+                  </Button>
+                  <Button
+                    onClick={() => window.location.reload()}
+                    className="flex-1 bg-brand-purple hover:bg-brand-purple/90"
+                  >
+                    Create Another Judge
+                  </Button>
                 </div>
-                <div>
-                  <Label className="text-foreground/70">Registry Transaction Hash</Label>
-                  <p className="text-sm font-mono break-all text-foreground/80">{registrationResult.txHash}</p>
-                </div>
-                <Button onClick={() => router.push("/marketplace")} className="w-full mt-4">
-                  Go to Marketplace
-                </Button>
               </div>
             </Card>
           )}

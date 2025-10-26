@@ -153,6 +153,28 @@ Create a new judge (admin only).
 }
 ```
 
+**Field Mapping (Frontend → Database):**
+- `name` → `name`
+- `title` → `title`
+- `tagline` (array) → `tagline` (JSON string)
+- `description` → `description`
+- `avatar` → `avatar`
+- `themeColor` → `theme_color`
+- `specialties` (array) → `specialties` (JSON string)
+- `modelProvider` → `model_provider`
+- `modelName` → `model_name`
+- `systemPrompt` → `system_prompt`
+- `temperature` → `temperature`
+- `price` → `price`
+- `walletAddress` → `wallet_address`
+- `ipfsCid` (optional) → `ipfs_cid`
+
+**Auto-generated Fields:**
+- `payment_page_url` - Generated as `{BACKEND_URL}/api/pay/judge/{judgeId}`
+- `rating` - Defaults to 0.00
+- `total_judgments` - Defaults to 0
+- `status` - Defaults to 'active'
+
 **Response:**
 ```json
 {

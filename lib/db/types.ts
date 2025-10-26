@@ -194,3 +194,29 @@ export interface GetOrchestratorResponse {
   }
   error?: string
 }
+
+export interface CreateJudgeRequest {
+  name: string
+  title?: string
+  tagline?: string[]
+  description?: string
+  avatar?: string
+  themeColor?: string
+  specialties?: string[]
+  modelProvider?: string
+  modelName?: string
+  systemPrompt: string
+  temperature?: number
+  price?: number
+  walletAddress?: string
+  ipfsCid?: string
+}
+
+export interface CreateJudgeResponse {
+  success: boolean
+  judgeId?: number
+  ipfsCid?: string
+  registryTxHash?: string | null
+  paymentPageUrl?: string
+  error?: string
+}

@@ -15,6 +15,25 @@ import { useJudgesByIds } from "@/hooks/use-judges-api"
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
 import { transferHBAR } from "@/lib/hedera/hedera-utils"
 import type { Judge } from "@/types/judge"
+import { keccak256, toHex } from "viem"
+
+const REPUTATION_REGISTRY_ABI = [
+  {
+    type: 'function',
+    name: 'giveFeedback',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'agentId', type: 'uint256' },
+      { name: 'score', type: 'uint8' },
+      { name: 'tag1', type: 'bytes32' },
+      { name: 'tag2', type: 'bytes32' },
+      { name: 'feedbackUri', type: 'string' },
+      { name: 'feedbackHash', type: 'bytes32' },
+      { name: 'feedbackAuth', type: 'bytes' },
+    ],
+    outputs: [],
+  },
+] as const
 
 const steps = [
   { id: 1, name: "Judges", icon: Sparkles },
@@ -56,8 +75,24 @@ export default function SubmitPage() {
   const [lastSequenceNumber, setLastSequenceNumber] = useState<number>(0)
   const [finalConsensusScore, setFinalConsensusScore] = useState<number | null>(null)
   const [currentRound, setCurrentRound] = useState<number>(0)
-  const [judgeFeedback, setJudgeFeedback] = useState<Record<number, { rating: number; comment: string }>>({})
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+  const [judgeFeedback, setJudgeFeedback] = useState<Record<number, { rating: number; comment: string; tags: string[] }>>({})
+  const [currentFeedbackJudgeId, setCurrentFeedbackJudgeId] = useState<number | null>(null)
+  const [feedbackTxHash, setFeedbackTxHash] = useState<Record<number, string>>({})
+
+  // Separate write contract hook for feedback
+  const {
+    writeContract: writeFeedback,
+    data: feedbackHash,
+    isPending: isFeedbackPending,
+    error: feedbackWriteError
+  } = useWriteContract()
+
+  const {
+    isLoading: isFeedbackConfirming,
+    isSuccess: isFeedbackConfirmed
+  } = useWaitForTransactionReceipt({
+    hash: feedbackHash,
+  })
 
   // Get selected judge IDs from URL params
   const judgeIds = useMemo(() => {
@@ -259,6 +294,35 @@ export default function SubmitPage() {
       alert(`Transaction failed: ${writeError.message}`)
     }
   }, [writeError])
+
+  // Handle feedback transaction confirmation
+  useEffect(() => {
+    if (isFeedbackConfirmed && feedbackHash && currentFeedbackJudgeId) {
+      setFeedbackTxHash(prev => ({
+        ...prev,
+        [currentFeedbackJudgeId]: feedbackHash
+      }))
+
+      alert('Feedback submitted on-chain successfully!')
+
+      // Clear feedback for this judge
+      setJudgeFeedback(prev => {
+        const newFeedback = { ...prev }
+        delete newFeedback[currentFeedbackJudgeId]
+        return newFeedback
+      })
+
+      setCurrentFeedbackJudgeId(null)
+    }
+  }, [isFeedbackConfirmed, feedbackHash, currentFeedbackJudgeId])
+
+  // Handle feedback write errors
+  useEffect(() => {
+    if (feedbackWriteError) {
+      alert(`Feedback transaction failed: ${feedbackWriteError.message}`)
+      setCurrentFeedbackJudgeId(null)
+    }
+  }, [feedbackWriteError])
 
   const handleRunTest = async () => {
     if (!formData.testContent) return
@@ -525,44 +589,94 @@ export default function SubmitPage() {
     }
   }, [hcsMessages])
 
-  const handleSubmitFeedback = async (judgeId: number) => {
+  const handleSubmitFeedback = async (judgeId: number, registryAgentId: number) => {
     const feedback = judgeFeedback[judgeId]
     if (!feedback || !feedback.rating) {
       alert('Please provide a rating')
       return
     }
 
-    setIsSubmittingFeedback(true)
+    if (!address) {
+      alert('Please connect your wallet first')
+      return
+    }
+
+    setCurrentFeedbackJudgeId(judgeId)
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/${judgeId}/feedback`, {
+      // Step 1: Convert rating (1-5) to score (0-100)
+      const score = Math.floor((feedback.rating / 5) * 100)
+
+      // Step 2: Upload feedback to IPFS
+      const feedbackData = {
+        rating: feedback.rating,
+        comment: feedback.comment,
+        tags: feedback.tags || [],
+        judgeId,
+        evaluationId: testResults?.evaluationId || null,
+        timestamp: Date.now(),
+        userAddress: address
+      }
+
+      const ipfsResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/upload-feedback`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedbackData),
+      })
+
+      if (!ipfsResponse.ok) {
+        throw new Error('Failed to upload feedback to IPFS')
+      }
+
+      const { ipfsUri, ipfsHash } = await ipfsResponse.json()
+
+      // Step 3: Get feedback auth signature from backend (agent owner)
+      const authResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/${judgeId}/feedback-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          rating: feedback.rating,
-          comment: feedback.comment,
-          userAddress: address || formData.ownerAddress,
-          evaluationId: testResults?.evaluationId || null
+          userAddress: address,
+          feedbackHash: ipfsHash
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to submit feedback')
+      if (!authResponse.ok) {
+        throw new Error('Failed to get feedback authorization')
       }
 
-      alert('Feedback submitted successfully!')
-      // Clear feedback for this judge
-      setJudgeFeedback(prev => {
-        const newFeedback = { ...prev }
-        delete newFeedback[judgeId]
-        return newFeedback
+      const { feedbackAuth } = await authResponse.json()
+
+      // Step 4: Convert tags to bytes32
+      const tags = feedback.tags || []
+      const tag1 = tags[0] ? keccak256(toHex(tags[0])) : keccak256(toHex('general'))
+      const tag2 = tags[1] ? keccak256(toHex(tags[1])) : keccak256(toHex('evaluation'))
+
+      // Step 5: Get reputation registry contract address
+      const registryAddress = process.env.NEXT_PUBLIC_REPUTATION_REGISTRY_ADDRESS
+      if (!registryAddress) {
+        throw new Error('Reputation registry address not configured')
+      }
+
+      // Step 6: Call smart contract
+      writeFeedback({
+        address: registryAddress as `0x${string}`,
+        abi: REPUTATION_REGISTRY_ABI,
+        functionName: 'giveFeedback',
+        args: [
+          BigInt(registryAgentId),
+          score,
+          tag1,
+          tag2,
+          ipfsUri,
+          ipfsHash as `0x${string}`,
+          feedbackAuth as `0x${string}`
+        ],
       })
+
     } catch (error) {
       console.error('Error submitting feedback:', error)
       alert(error instanceof Error ? error.message : 'Failed to submit feedback')
-    } finally {
-      setIsSubmittingFeedback(false)
+      setCurrentFeedbackJudgeId(null)
     }
   }
 
@@ -1214,60 +1328,133 @@ export default function SubmitPage() {
                             <div className="mt-4 pt-4 border-t border-border/30">
                               <h5 className="text-sm font-medium mb-3 flex items-center gap-2">
                                 <Star className="w-4 h-4 text-brand-gold" />
-                                Leave Feedback for this Judge
+                                Leave On-Chain Feedback for this Judge
                               </h5>
-                              <div className="space-y-3">
-                                <div>
-                                  <Label htmlFor={`rating-${judgeId}`} className="text-xs">Rating (1-5)</Label>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    {[1, 2, 3, 4, 5].map((rating) => (
-                                      <button
-                                        key={rating}
-                                        type="button"
-                                        onClick={() => setJudgeFeedback(prev => ({
+
+                              {/* Show success state if feedback already submitted */}
+                              {feedbackTxHash[judgeId] ? (
+                                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                    <span className="font-medium text-green-400">Feedback Submitted On-Chain!</span>
+                                  </div>
+                                  <p className="text-xs text-foreground/60 mb-2">Transaction Hash:</p>
+                                  <a
+                                    href={`https://hashscan.io/testnet/transaction/${feedbackTxHash[judgeId]}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-mono text-brand-cyan hover:text-brand-cyan/80 underline flex items-center gap-1"
+                                  >
+                                    {feedbackTxHash[judgeId]}
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  <div>
+                                    <Label htmlFor={`rating-${judgeId}`} className="text-xs">Rating (1-5 stars)</Label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {[1, 2, 3, 4, 5].map((rating) => (
+                                        <button
+                                          key={rating}
+                                          type="button"
+                                          onClick={() => setJudgeFeedback(prev => ({
+                                            ...prev,
+                                            [judgeId]: { ...prev[judgeId], rating, tags: prev[judgeId]?.tags || [] }
+                                          }))}
+                                          className="transition-transform hover:scale-110"
+                                          disabled={currentFeedbackJudgeId === judgeId}
+                                        >
+                                          <Star
+                                            className={`w-6 h-6 ${
+                                              (judgeFeedback[judgeId]?.rating || 0) >= rating
+                                                ? 'fill-brand-gold text-brand-gold'
+                                                : 'text-foreground/30'
+                                            }`}
+                                          />
+                                        </button>
+                                      ))}
+                                      {judgeFeedback[judgeId]?.rating && (
+                                        <span className="text-sm text-foreground/60 ml-2">
+                                          {judgeFeedback[judgeId].rating}/5 (Score: {Math.floor((judgeFeedback[judgeId].rating / 5) * 100)}/100)
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <Label htmlFor={`tags-${judgeId}`} className="text-xs">Tags (Optional, max 2)</Label>
+                                    <Input
+                                      id={`tags-${judgeId}`}
+                                      placeholder="e.g., helpful, detailed"
+                                      value={judgeFeedback[judgeId]?.tags?.join(', ') || ''}
+                                      onChange={(e) => {
+                                        const tags = e.target.value.split(',').map(t => t.trim()).filter(t => t).slice(0, 2)
+                                        setJudgeFeedback(prev => ({
                                           ...prev,
-                                          [judgeId]: { ...prev[judgeId], rating }
-                                        }))}
-                                        className="transition-transform hover:scale-110"
-                                      >
-                                        <Star
-                                          className={`w-6 h-6 ${
-                                            (judgeFeedback[judgeId]?.rating || 0) >= rating
-                                              ? 'fill-brand-gold text-brand-gold'
-                                              : 'text-foreground/30'
-                                          }`}
-                                        />
-                                      </button>
-                                    ))}
-                                    {judgeFeedback[judgeId]?.rating && (
-                                      <span className="text-sm text-foreground/60 ml-2">
-                                        {judgeFeedback[judgeId].rating}/5
-                                      </span>
+                                          [judgeId]: { ...prev[judgeId], tags, comment: prev[judgeId]?.comment || '' }
+                                        }))
+                                      }}
+                                      className="mt-1.5 text-sm"
+                                      disabled={currentFeedbackJudgeId === judgeId}
+                                    />
+                                    <p className="text-xs text-foreground/60 mt-1">Separate tags with commas</p>
+                                  </div>
+
+                                  <div>
+                                    <Label htmlFor={`comment-${judgeId}`} className="text-xs">Comment (Optional)</Label>
+                                    <Textarea
+                                      id={`comment-${judgeId}`}
+                                      placeholder="Share your experience with this judge..."
+                                      value={judgeFeedback[judgeId]?.comment || ''}
+                                      onChange={(e) => setJudgeFeedback(prev => ({
+                                        ...prev,
+                                        [judgeId]: { ...prev[judgeId], comment: e.target.value, tags: prev[judgeId]?.tags || [] }
+                                      }))}
+                                      className="mt-1.5 min-h-[80px] text-sm"
+                                      disabled={currentFeedbackJudgeId === judgeId}
+                                    />
+                                  </div>
+
+                                  {/* Transaction Status */}
+                                  {currentFeedbackJudgeId === judgeId && (isFeedbackPending || isFeedbackConfirming) && (
+                                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                                        <span className="text-blue-400">
+                                          {isFeedbackPending ? "Waiting for wallet confirmation..." : "Transaction confirming on-chain..."}
+                                        </span>
+                                      </div>
+                                      {feedbackHash && (
+                                        <p className="text-xs text-foreground/60 mt-2">
+                                          TX: <span className="font-mono">{feedbackHash}</span>
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleSubmitFeedback(judgeId, judge.registryAgentId || judgeId)}
+                                      disabled={!judgeFeedback[judgeId]?.rating || currentFeedbackJudgeId === judgeId}
+                                      className="bg-brand-purple hover:bg-brand-purple/90"
+                                    >
+                                      {currentFeedbackJudgeId === judgeId
+                                        ? (isFeedbackPending ? 'Confirm in Wallet...' : 'Submitting...')
+                                        : 'Submit On-Chain Feedback'}
+                                    </Button>
+                                    {!isConnected && (
+                                      <p className="text-xs text-foreground/60">Connect wallet to submit</p>
                                     )}
                                   </div>
+
+                                  <div className="text-xs text-foreground/60 bg-surface-2/50 p-3 rounded border border-border/30">
+                                    <strong className="text-brand-purple">ℹ️ On-Chain Feedback:</strong> Your feedback will be recorded on the Hedera blockchain
+                                    via the Reputation Registry smart contract. This requires a wallet signature and gas fees.
+                                  </div>
                                 </div>
-                                <div>
-                                  <Label htmlFor={`comment-${judgeId}`} className="text-xs">Comment (Optional)</Label>
-                                  <Textarea
-                                    id={`comment-${judgeId}`}
-                                    placeholder="Share your experience with this judge..."
-                                    value={judgeFeedback[judgeId]?.comment || ''}
-                                    onChange={(e) => setJudgeFeedback(prev => ({
-                                      ...prev,
-                                      [judgeId]: { ...prev[judgeId], comment: e.target.value }
-                                    }))}
-                                    className="mt-1.5 min-h-[80px] text-sm"
-                                  />
-                                </div>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleSubmitFeedback(judgeId)}
-                                  disabled={!judgeFeedback[judgeId]?.rating || isSubmittingFeedback}
-                                  className="bg-brand-purple hover:bg-brand-purple/90"
-                                >
-                                  {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
-                                </Button>
-                              </div>
+                              )}
                             </div>
                           </Card>
                         )

@@ -1,7 +1,7 @@
 'use client'
 
 import { Filter } from 'lucide-react'
-import { JudgeCard } from '@/components/judge-card'
+import { JudgeCard } from '@/components/marketplace/judge-card'
 import { Badge } from '@/components/ui/badge'
 import type { Judge } from '@/types/judge'
 

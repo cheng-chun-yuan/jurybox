@@ -314,110 +314,141 @@ export default function SubmitPage() {
       if (response.ok) {
         const data = await response.json()
         if (data.messages && data.messages.length > 0) {
-          // First, aggregate chunked messages
-          const messageChunks = new Map<string, any[]>()
+          console.log(`[HCS] Fetched ${data.messages.length} new messages from topic ${topicId}`)
 
-          data.messages.forEach((msg: any) => {
-            const decodedMessage = atob(msg.message)
+          // Step 1: Decode all messages first
+          const decodedMessages = data.messages.map((msg: any) => ({
+            ...msg,
+            decoded: atob(msg.message)
+          }))
 
-            // Check if message is chunked (format: "content" or chunked JSON)
-            const chunkMatch = decodedMessage.match(/^(\d+)\/(\d+)$/) // matches "1/2", "2/2" etc at start
+          // Step 2: Build chunk map - look ahead to identify chunks
+          const chunkMap = new Map<number, {total: number, startSeq: number}>()
+
+          decodedMessages.forEach((msg: any, idx: number) => {
+            const decoded = msg.decoded.trim()
+            const chunkMatch = decoded.match(/^(\d+)\/(\d+)$/)
 
             if (chunkMatch) {
-              // This is a chunk indicator, skip it
-              return
-            }
+              const chunkNum = parseInt(chunkMatch[1])
+              const totalChunks = parseInt(chunkMatch[2])
 
-            // Try to detect if this is part of a chunked message by checking the CHUNK field
-            let isChunk = false
-            let chunkInfo = { current: 1, total: 1 }
-
-            try {
-              // Check if the decoded message has chunk info at the end
-              const lines = decodedMessage.split('\n')
-              const lastLine = lines[lines.length - 1]?.trim()
-              const chunkPattern = /(\d+)\/(\d+)$/
-              const match = lastLine?.match(chunkPattern)
-
-              if (match) {
-                isChunk = true
-                chunkInfo = { current: parseInt(match[1]), total: parseInt(match[2]) }
-
-                // Store chunk
-                const chunkKey = `${msg.sequence_number - chunkInfo.current + 1}` // Base sequence
-                if (!messageChunks.has(chunkKey)) {
-                  messageChunks.set(chunkKey, [])
-                }
-                messageChunks.get(chunkKey)!.push({
-                  ...msg,
-                  decodedMessage: decodedMessage.replace(chunkPattern, '').trim(),
-                  chunkInfo
+              if (chunkNum === 1) {
+                // This marks the start of a chunked message
+                chunkMap.set(msg.sequence_number, {
+                  total: totalChunks,
+                  startSeq: msg.sequence_number
                 })
               }
-            } catch (e) {
-              // Not a chunked message
-            }
-
-            if (!isChunk) {
-              // Regular non-chunked message, process immediately
-              const key = `single-${msg.sequence_number}`
-              messageChunks.set(key, [{
-                ...msg,
-                decodedMessage,
-                chunkInfo: { current: 1, total: 1 }
-              }])
             }
           })
 
-          // Now parse aggregated messages
+          console.log(`[HCS] Found ${chunkMap.size} chunked message groups`)
+
+          // Step 3: Group messages based on chunk map
+          const messageGroups = new Map<string, any[]>()
+          let i = 0
+
+          while (i < decodedMessages.length) {
+            const msg = decodedMessages[i]
+            const decoded = msg.decoded.trim()
+
+            // Check if this is a chunk indicator
+            const isChunkIndicator = decoded.match(/^(\d+)\/(\d+)$/)
+
+            if (isChunkIndicator && chunkMap.has(msg.sequence_number)) {
+              // This is the start of a chunked message
+              const chunkInfo = chunkMap.get(msg.sequence_number)!
+              const groupKey = `chunk-${msg.sequence_number}`
+              const chunks: any[] = []
+
+              console.log(`[HCS] Processing chunked message starting at seq ${msg.sequence_number}, expecting ${chunkInfo.total} content chunks`)
+
+              // Skip the chunk indicators and collect the actual content
+              // Pattern: 1/N, content1, 2/N, content2, ..., N/N, contentN
+              for (let chunkIdx = 0; chunkIdx < chunkInfo.total; chunkIdx++) {
+                // Skip chunk indicator (i)
+                i++
+
+                // Get content message (i)
+                if (i < decodedMessages.length) {
+                  const contentMsg = decodedMessages[i]
+                  const contentDecoded = contentMsg.decoded.trim()
+
+                  // Make sure this isn't another chunk indicator
+                  if (!contentDecoded.match(/^(\d+)\/(\d+)$/)) {
+                    chunks.push(contentMsg)
+                    console.log(`[HCS] Added chunk ${chunkIdx + 1}/${chunkInfo.total}: ${contentDecoded.substring(0, 50)}...`)
+                  }
+                }
+                i++
+              }
+
+              // Go back one since the loop will increment
+              i--
+
+              messageGroups.set(groupKey, chunks)
+              console.log(`[HCS] Completed chunk group ${groupKey} with ${chunks.length} chunks`)
+            } else if (!isChunkIndicator) {
+              // Standalone message (not a chunk indicator)
+              const key = `single-${msg.sequence_number}`
+              messageGroups.set(key, [msg])
+              console.log(`[HCS] Standalone message at seq ${msg.sequence_number}`)
+            }
+
+            i++
+          }
+
+          console.log(`[HCS] Total message groups: ${messageGroups.size}`)
+
+          // Step 3: Aggregate chunks and parse JSON
           const parsedMessages: any[] = []
 
-          messageChunks.forEach((chunks) => {
+          messageGroups.forEach((messages, groupKey) => {
             try {
-              // Sort chunks by chunk number
-              chunks.sort((a, b) => a.chunkInfo.current - b.chunkInfo.current)
-
-              // Check if we have all chunks
-              const totalChunks = chunks[0].chunkInfo.total
-              if (chunks.length !== totalChunks) {
-                console.warn(`Incomplete chunked message: have ${chunks.length}/${totalChunks} chunks`)
+              if (!messages || messages.length === 0) {
+                console.warn(`[HCS] Empty message group: ${groupKey}`)
                 return
               }
 
-              // Combine all chunks
-              const combinedMessage = chunks.map(c => c.decodedMessage).join('')
-              const firstChunk = chunks[0]
+              // Combine all message contents
+              const combinedContent = messages.map(m => m.decoded).join('')
+              const firstMessage = messages[0]
+
+              console.log(`[HCS] Processing group ${groupKey}: ${messages.length} messages, ${combinedContent.length} chars`)
 
               let parsedData = {}
 
-              // Try to parse JSON, use empty object if it fails
+              // Try to parse the combined JSON
               try {
-                parsedData = JSON.parse(combinedMessage)
+                parsedData = JSON.parse(combinedContent)
+                console.log(`[HCS] Successfully parsed JSON for ${groupKey}, type: ${parsedData.type}`)
               } catch (jsonError) {
-                console.warn(`Invalid JSON in aggregated message, using fallback:`, jsonError instanceof Error ? jsonError.message : jsonError)
-                // Store raw message as fallback
+                console.error(`[HCS] Failed to parse JSON for group ${groupKey}:`, jsonError instanceof Error ? jsonError.message : jsonError)
+                console.error(`[HCS] Combined content (${combinedContent.length} chars):`, combinedContent.substring(0, 200))
                 parsedData = {
                   type: 'error',
-                  rawMessage: combinedMessage.substring(0, 100),
+                  rawMessage: combinedContent.substring(0, 100),
                   error: 'Invalid JSON format'
                 }
               }
 
               // Parse consensus timestamp correctly (format: seconds.nanoseconds)
-              const [seconds, nanoseconds] = firstChunk.consensus_timestamp.split('.')
+              const [seconds, nanoseconds] = firstMessage.consensus_timestamp.split('.')
               const timestampMs = parseInt(seconds) * 1000 + parseInt(nanoseconds) / 1000000
 
               parsedMessages.push({
-                ...firstChunk,
+                ...firstMessage,
                 parsedData,
                 timestamp: new Date(timestampMs),
-                sequenceNumber: firstChunk.sequence_number,
-                uniqueId: `${topicId}-${firstChunk.sequence_number}`,
-                isAggregated: totalChunks > 1,
-                totalChunks
+                sequenceNumber: firstMessage.sequence_number,
+                uniqueId: `${topicId}-${firstMessage.sequence_number}`,
+                isAggregated: messages.length > 1,
+                totalChunks: messages.length,
+                combinedContent: combinedContent.substring(0, 500) // Store preview for debugging
               })
             } catch (e) {
-              console.error('Error processing message chunks:', e)
+              console.error(`[HCS] Error processing message group ${groupKey}:`, e)
             }
           })
 

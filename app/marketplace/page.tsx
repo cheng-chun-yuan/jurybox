@@ -6,13 +6,13 @@ import { AppNav } from "@/components/layout/app-nav"
 import { MarketplaceHeader } from "@/components/marketplace/marketplace-header"
 import { MarketplaceFilters } from "@/components/marketplace/marketplace-filters"
 import { JudgeGrid } from "@/components/marketplace/judge-grid"
-import { JudgeSelector } from "@/components/judge-selector"
+import { JudgeSelector } from "@/components/orchestrator/judge-selector"
 import { useMarketplaceFilters } from "@/hooks/use-marketplace-filters"
 import { useJudgeSelection } from "@/hooks/use-judge-selection"
 import { useAllJudges } from "@/hooks/use-judges-api"
 
 // Lazy load heavy modal component
-const JudgeDetailModal = lazy(() => import("@/components/judge-detail-modal").then(mod => ({ default: mod.JudgeDetailModal })))
+const JudgeDetailModal = lazy(() => import("@/components/marketplace/judge-detail-modal").then(mod => ({ default: mod.JudgeDetailModal })))
 
 const categories = ["All", "Academic", "Creative", "Technical", "Business", "Writing", "Data"]
 

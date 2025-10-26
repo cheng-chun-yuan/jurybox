@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react"
-import { FeaturedJudges } from "@/components/featured-judges"
+import { FeaturedJudges } from "@/components/marketplace/featured-judges"
 import { RecentJudgments } from "@/components/recent-judgments"
 import { SignInButton } from "@/components/auth/sign-in-button"
 import { Logo } from "@/components/logo"

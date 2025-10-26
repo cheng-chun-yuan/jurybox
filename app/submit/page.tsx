@@ -56,6 +56,8 @@ export default function SubmitPage() {
   const [lastSequenceNumber, setLastSequenceNumber] = useState<number>(0)
   const [finalConsensusScore, setFinalConsensusScore] = useState<number | null>(null)
   const [currentRound, setCurrentRound] = useState<number>(0)
+  const [judgeFeedback, setJudgeFeedback] = useState<Record<number, { rating: number; comment: string }>>({})
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
 
   // Get selected judge IDs from URL params
   const judgeIds = useMemo(() => {
@@ -272,9 +274,11 @@ export default function SubmitPage() {
         },
         body: JSON.stringify({
           agentIds: selectedJudges.map(j => j.id),
-          content: formData.testContent,
           maxRounds: maxRounds,
-          consensusAlgorithm: "weighted_average"
+          consensusAlgorithm: "weighted_average",
+          content: formData.testContent,
+          criteria: ['Accuracy', 'Clarity', 'Completeness', 'Relevance'],
+          userWalletAddress: address || formData.ownerAddress
         }),
       })
 
@@ -520,6 +524,47 @@ export default function SubmitPage() {
       setCurrentRound(maxRoundNumber)
     }
   }, [hcsMessages])
+
+  const handleSubmitFeedback = async (judgeId: number) => {
+    const feedback = judgeFeedback[judgeId]
+    if (!feedback || !feedback.rating) {
+      alert('Please provide a rating')
+      return
+    }
+
+    setIsSubmittingFeedback(true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/judges/${judgeId}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rating: feedback.rating,
+          comment: feedback.comment,
+          userAddress: address || formData.ownerAddress,
+          evaluationId: testResults?.evaluationId || null
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback')
+      }
+
+      alert('Feedback submitted successfully!')
+      // Clear feedback for this judge
+      setJudgeFeedback(prev => {
+        const newFeedback = { ...prev }
+        delete newFeedback[judgeId]
+        return newFeedback
+      })
+    } catch (error) {
+      console.error('Error submitting feedback:', error)
+      alert(error instanceof Error ? error.message : 'Failed to submit feedback')
+    } finally {
+      setIsSubmittingFeedback(false)
+    }
+  }
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -1128,42 +1173,105 @@ export default function SubmitPage() {
                   {testResults.judges && testResults.judges.length > 0 && (
                     <div className="space-y-3">
                       <h3 className="font-semibold">Final Judge Evaluations</h3>
-                      {testResults.judges.map((judge: any) => (
-                        <Card key={judge.id ?? judge.agentId} className="p-4 bg-surface-1">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-medium">{judge.name ?? `Judge ${judge.agentId ?? judge.id}`}</h4>
-                            <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
-                              <span className="font-mono font-bold">{judge.score?.toFixed(1) ?? 'N/A'}</span>
+                      {testResults.judges.map((judge: any) => {
+                        const judgeId = judge.id ?? judge.agentId
+                        return (
+                          <Card key={judgeId} className="p-4 bg-surface-1">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium">{judge.name ?? `Judge ${judgeId}`}</h4>
+                              <div className="flex items-center gap-1">
+                                <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
+                                <span className="font-mono font-bold">{judge.score?.toFixed(1) ?? 'N/A'}</span>
+                              </div>
                             </div>
-                          </div>
-                          {judge.feedback && <p className="text-sm text-foreground/70 mb-3">{judge.feedback}</p>}
-                          {(judge.strengths || judge.improvements) && (
-                            <div className="grid md:grid-cols-2 gap-3 text-sm">
-                              {judge.strengths && judge.strengths.length > 0 && (
+                            {judge.feedback && <p className="text-sm text-foreground/70 mb-3">{judge.feedback}</p>}
+                            {(judge.strengths || judge.improvements) && (
+                              <div className="grid md:grid-cols-2 gap-3 text-sm mb-4">
+                                {judge.strengths && judge.strengths.length > 0 && (
+                                  <div>
+                                    <span className="font-medium text-brand-cyan">Strengths:</span>
+                                    <ul className="mt-1 space-y-1 text-foreground/70">
+                                      {judge.strengths.map((s: string, idx: number) => (
+                                        <li key={idx}>• {s}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {judge.improvements && judge.improvements.length > 0 && (
+                                  <div>
+                                    <span className="font-medium text-brand-purple">Improvements:</span>
+                                    <ul className="mt-1 space-y-1 text-foreground/70">
+                                      {judge.improvements.map((i: string, idx: number) => (
+                                        <li key={idx}>• {i}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Feedback Form */}
+                            <div className="mt-4 pt-4 border-t border-border/30">
+                              <h5 className="text-sm font-medium mb-3 flex items-center gap-2">
+                                <Star className="w-4 h-4 text-brand-gold" />
+                                Leave Feedback for this Judge
+                              </h5>
+                              <div className="space-y-3">
                                 <div>
-                                  <span className="font-medium text-brand-cyan">Strengths:</span>
-                                  <ul className="mt-1 space-y-1 text-foreground/70">
-                                    {judge.strengths.map((s: string, idx: number) => (
-                                      <li key={idx}>• {s}</li>
+                                  <Label htmlFor={`rating-${judgeId}`} className="text-xs">Rating (1-5)</Label>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {[1, 2, 3, 4, 5].map((rating) => (
+                                      <button
+                                        key={rating}
+                                        type="button"
+                                        onClick={() => setJudgeFeedback(prev => ({
+                                          ...prev,
+                                          [judgeId]: { ...prev[judgeId], rating }
+                                        }))}
+                                        className="transition-transform hover:scale-110"
+                                      >
+                                        <Star
+                                          className={`w-6 h-6 ${
+                                            (judgeFeedback[judgeId]?.rating || 0) >= rating
+                                              ? 'fill-brand-gold text-brand-gold'
+                                              : 'text-foreground/30'
+                                          }`}
+                                        />
+                                      </button>
                                     ))}
-                                  </ul>
+                                    {judgeFeedback[judgeId]?.rating && (
+                                      <span className="text-sm text-foreground/60 ml-2">
+                                        {judgeFeedback[judgeId].rating}/5
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                              {judge.improvements && judge.improvements.length > 0 && (
                                 <div>
-                                  <span className="font-medium text-brand-purple">Improvements:</span>
-                                  <ul className="mt-1 space-y-1 text-foreground/70">
-                                    {judge.improvements.map((i: string, idx: number) => (
-                                      <li key={idx}>• {i}</li>
-                                    ))}
-                                  </ul>
+                                  <Label htmlFor={`comment-${judgeId}`} className="text-xs">Comment (Optional)</Label>
+                                  <Textarea
+                                    id={`comment-${judgeId}`}
+                                    placeholder="Share your experience with this judge..."
+                                    value={judgeFeedback[judgeId]?.comment || ''}
+                                    onChange={(e) => setJudgeFeedback(prev => ({
+                                      ...prev,
+                                      [judgeId]: { ...prev[judgeId], comment: e.target.value }
+                                    }))}
+                                    className="mt-1.5 min-h-[80px] text-sm"
+                                  />
                                 </div>
-                              )}
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSubmitFeedback(judgeId)}
+                                  disabled={!judgeFeedback[judgeId]?.rating || isSubmittingFeedback}
+                                  className="bg-brand-purple hover:bg-brand-purple/90"
+                                >
+                                  {isSubmittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                                </Button>
+                              </div>
                             </div>
-                          )}
-                        </Card>
-                      ))}
+                          </Card>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

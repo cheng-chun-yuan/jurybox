@@ -215,7 +215,7 @@ export default function ResultsPage() {
                       key={index}
                       className="flex items-start gap-3 p-4 rounded-lg bg-brand-purple/5 border border-brand-purple/20"
                     >
-                      <ThumbsUp className="w-5 h-5 text-brand-purple mt-0.5 flex-shrink-0" />
+                      <ThumbsUp className="w-5 h-5 text-brand-purple mt-0.5 shrink-0" />
                       <p className="text-foreground/80">{strength}</p>
                     </div>
                   ))}
@@ -227,7 +227,7 @@ export default function ResultsPage() {
                       key={index}
                       className="flex items-start gap-3 p-4 rounded-lg bg-brand-cyan/5 border border-brand-cyan/20"
                     >
-                      <AlertCircle className="w-5 h-5 text-brand-cyan mt-0.5 flex-shrink-0" />
+                      <AlertCircle className="w-5 h-5 text-brand-cyan mt-0.5 shrink-0" />
                       <p className="text-foreground/80">{improvement}</p>
                     </div>
                   ))}

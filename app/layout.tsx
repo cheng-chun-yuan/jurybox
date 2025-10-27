@@ -2,8 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { PrivyClientProvider } from "@/components/providers/privy-provider"
-import { QueryProvider } from "@/components/providers/query-provider"
+import RainbowProvider from "@/components/providers/rainbow-provider"
 import "./globals.css"
 
 const spaceGrotesk = Space_Grotesk({
@@ -42,11 +41,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        <QueryProvider>
-          <PrivyClientProvider>
-            {children}
-          </PrivyClientProvider>
-        </QueryProvider>
+        <RainbowProvider>
+          {children}
+        </RainbowProvider>
         <Analytics />
       </body>
     </html>

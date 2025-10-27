@@ -1,151 +1,53 @@
 /**
  * Hedera Agent Service
- * Manages agent creation and operations using Hedera Agent Kit
+ * Handles Hedera blockchain operations for AI agents
  */
 
-import {
-  Client,
-  AccountId,
-  PrivateKey,
-  AccountCreateTransaction,
-  Hbar,
-  TransferTransaction,
-  TopicCreateTransaction,
-  TopicMessageSubmitTransaction,
-} from '@hashgraph/sdk'
-import type { HederaAccountInfo, Agent, JudgmentRequest } from '@/types/agent'
+import { Client, AccountId, PrivateKey, TopicCreateTransaction, TopicMessageSubmitTransaction, AccountBalanceQuery, AccountCreateTransaction, TransferTransaction, Hbar } from '@hashgraph/sdk'
 
-export class HederaAgentService {
-  private client: Client
-  private operatorAccountId: AccountId
-  private operatorPrivateKey: PrivateKey
+export interface HederaAccount {
+  accountId: string
+  publicKey: string
+  privateKey: string
+  balance: number
+}
+
+export interface HederaTopic {
+  topicId: string
+  topicMemo: string
+  createdAt: number
+}
+
+class HederaAgentService {
+  private client: Client | null = null
+  private operatorAccountId: string | null = null
+  private operatorPrivateKey: PrivateKey | null = null
 
   constructor() {
-    // Initialize Hedera client for testnet
-    // In production, use mainnet and secure key management
-    const accountIdStr = process.env.HEDERA_ACCOUNT_ID || ''
-    const privateKeyStr = process.env.HEDERA_PRIVATE_KEY || ''
-
-    if (!accountIdStr || !privateKeyStr) {
-      throw new Error('Hedera credentials not configured')
-    }
-
-    this.operatorAccountId = AccountId.fromString(accountIdStr)
-    this.operatorPrivateKey = PrivateKey.fromString(privateKeyStr)
-
-    this.client = Client.forTestnet().setOperator(
-      this.operatorAccountId,
-      this.operatorPrivateKey
-    )
+    this.initializeClient()
   }
 
-  /**
-   * Create a new Hedera account for an agent
-   */
-  async createAgentAccount(
-    initialBalance: number = 10
-  ): Promise<HederaAccountInfo> {
+  private initializeClient() {
     try {
-      // Generate new key pair for the agent
-      const privateKey = PrivateKey.generateED25519()
-      const publicKey = privateKey.publicKey
+      const accountId = process.env.HEDERA_ACCOUNT_ID
+      const privateKey = process.env.HEDERA_PRIVATE_KEY
 
-      // Create account transaction
-      const transaction = new AccountCreateTransaction()
-        .setKey(publicKey)
-        .setInitialBalance(new Hbar(initialBalance))
-
-      // Submit the transaction
-      const txResponse = await transaction.execute(this.client)
-      const receipt = await txResponse.getReceipt(this.client)
-      const accountId = receipt.accountId
-
-      if (!accountId) {
-        throw new Error('Failed to create account')
+      if (!accountId || !privateKey) {
+        console.warn('Hedera credentials not configured. Service will run in mock mode.')
+        return
       }
 
-      return {
-        accountId: accountId.toString(),
-        publicKey: publicKey.toString(),
-        privateKey: privateKey.toString(),
-        balance: initialBalance,
-      }
+      this.operatorAccountId = accountId
+      this.operatorPrivateKey = PrivateKey.fromString(privateKey)
+
+      // Initialize client for testnet
+      this.client = Client.forTestnet()
+      this.client.setOperator(AccountId.fromString(accountId), this.operatorPrivateKey)
+
+      console.log('✅ Hedera client initialized for testnet')
     } catch (error) {
-      console.error('Error creating agent account:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Transfer HBAR from one account to another
-   * Used for agent-to-agent payments
-   */
-  async transferHbar(
-    fromAccountId: string,
-    fromPrivateKey: string,
-    toAccountId: string,
-    amount: number
-  ): Promise<string> {
-    try {
-      const senderKey = PrivateKey.fromString(fromPrivateKey)
-
-      const transaction = new TransferTransaction()
-        .addHbarTransfer(AccountId.fromString(fromAccountId), new Hbar(-amount))
-        .addHbarTransfer(AccountId.fromString(toAccountId), new Hbar(amount))
-        .freezeWith(this.client)
-
-      const signedTx = await transaction.sign(senderKey)
-      const txResponse = await signedTx.execute(this.client)
-      const receipt = await txResponse.getReceipt(this.client)
-
-      return txResponse.transactionId.toString()
-    } catch (error) {
-      console.error('Error transferring HBAR:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Create a topic for agent communications
-   * Uses Hedera Consensus Service (HCS)
-   */
-  async createAgentTopic(memo: string): Promise<string> {
-    try {
-      const transaction = new TopicCreateTransaction()
-        .setSubmitKey(this.operatorPrivateKey.publicKey)
-        .setTopicMemo(memo)
-
-      const txResponse = await transaction.execute(this.client)
-      const receipt = await txResponse.getReceipt(this.client)
-      const topicId = receipt.topicId
-
-      if (!topicId) {
-        throw new Error('Failed to create topic')
-      }
-
-      return topicId.toString()
-    } catch (error) {
-      console.error('Error creating topic:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Submit a message to an agent topic
-   */
-  async submitMessage(topicId: string, message: string): Promise<string> {
-    try {
-      const transaction = new TopicMessageSubmitTransaction()
-        .setTopicId(topicId)
-        .setMessage(message)
-
-      const txResponse = await transaction.execute(this.client)
-      const receipt = await txResponse.getReceipt(this.client)
-
-      return txResponse.transactionId.toString()
-    } catch (error) {
-      console.error('Error submitting message:', error)
-      throw error
+      console.error('❌ Failed to initialize Hedera client:', error)
+      this.client = null
     }
   }
 
@@ -153,66 +55,196 @@ export class HederaAgentService {
    * Get account balance
    */
   async getAccountBalance(accountId: string): Promise<number> {
+    if (!this.client) {
+      throw new Error('Hedera client not initialized')
+    }
+
     try {
-      const balance = await this.client
-        .getAccountBalance(AccountId.fromString(accountId))
+      const query = new AccountBalanceQuery()
+        .setAccountId(AccountId.fromString(accountId))
+      
+      const balance = await query.execute(this.client)
       return balance.hbars.toTinybars().toNumber() / 100_000_000 // Convert to HBAR
     } catch (error) {
-      console.error('Error getting balance:', error)
+      console.error('Failed to get account balance:', error)
       throw error
     }
   }
 
   /**
-   * Initialize agent with Hedera capabilities
+   * Create a new HCS topic for agent communication
    */
-  async initializeAgent(agent: Partial<Agent>): Promise<HederaAccountInfo> {
-    // Create Hedera account for the agent
-    const accountInfo = await this.createAgentAccount()
+  async createAgentTopic(topicMemo: string): Promise<string> {
+    if (!this.client) {
+      // Mock mode - return a fake topic ID
+      const mockTopicId = `0.0.${Math.floor(Math.random() * 100000)}`
+      console.log(`🔧 Mock mode: Created topic ${mockTopicId}`)
+      return mockTopicId
+    }
 
-    // Create a topic for agent communications
-    const topicId = await this.createAgentTopic(
-      `Agent: ${agent.name} - ${agent.id}`
-    )
+    try {
+      const transaction = new TopicCreateTransaction()
+        .setTopicMemo(topicMemo)
+        .setMaxTransactionFee(new Hbar(2))
 
-    console.log(`Agent initialized with topic: ${topicId}`)
+      const response = await transaction.execute(this.client)
+      const receipt = await response.getReceipt(this.client)
+      
+      const topicId = receipt.topicId?.toString()
+      if (!topicId) {
+        throw new Error('Failed to get topic ID from receipt')
+      }
 
-    return accountInfo
+      console.log(`✅ Created HCS topic: ${topicId}`)
+      return topicId
+    } catch (error) {
+      console.error('Failed to create HCS topic:', error)
+      throw error
+    }
   }
 
   /**
-   * Process payment for judgment
+   * Submit a message to an HCS topic
    */
-  async processJudgmentPayment(
-    request: JudgmentRequest,
-    agent: Agent,
-    payerAccountId: string,
-    payerPrivateKey: string
-  ): Promise<string> {
-    const amount = agent.paymentConfig.pricePerJudgment
+  async submitTopicMessage(topicId: string, message: string): Promise<string> {
+    if (!this.client) {
+      // Mock mode
+      const mockTxId = `0.0.${Math.floor(Math.random() * 100000)}@${Date.now()}`
+      console.log(`🔧 Mock mode: Submitted message to topic ${topicId}`)
+      return mockTxId
+    }
 
-    return await this.transferHbar(
-      payerAccountId,
-      payerPrivateKey,
-      agent.hederaAccount.accountId,
-      amount
-    )
+    try {
+      const transaction = new TopicMessageSubmitTransaction()
+        .setTopicId(topicId)
+        .setMessage(message)
+
+      const response = await transaction.execute(this.client)
+      const receipt = await response.getReceipt(this.client)
+      
+      const transactionId = response.transactionId.toString()
+      console.log(`✅ Submitted message to topic ${topicId}`)
+      return transactionId
+    } catch (error) {
+      console.error('Failed to submit topic message:', error)
+      throw error
+    }
   }
 
   /**
-   * Close the client connection
+   * Create a new Hedera account for an agent
+   */
+  async createAgentAccount(initialBalance: number = 10): Promise<HederaAccount> {
+    if (!this.client) {
+      // Mock mode - return a fake account
+      const mockAccountId = `0.0.${Math.floor(Math.random() * 100000)}`
+      const mockPrivateKey = PrivateKey.generateED25519()
+      const mockPublicKey = mockPrivateKey.publicKey.toString()
+      
+      console.log(`🔧 Mock mode: Created agent account ${mockAccountId}`)
+      return {
+        accountId: mockAccountId,
+        publicKey: mockPublicKey,
+        privateKey: mockPrivateKey.toString(),
+        balance: initialBalance
+      }
+    }
+
+    try {
+      // Generate new key pair for the agent
+      const newPrivateKey = PrivateKey.generateED25519()
+      const newPublicKey = newPrivateKey.publicKey
+
+      // Create account transaction
+      const transaction = new AccountCreateTransaction()
+        .setKey(newPublicKey)
+        .setInitialBalance(new Hbar(initialBalance))
+
+      const response = await transaction.execute(this.client)
+      const receipt = await response.getReceipt(this.client)
+      
+      const accountId = receipt.accountId?.toString()
+      if (!accountId) {
+        throw new Error('Failed to get account ID from receipt')
+      }
+
+      console.log(`✅ Created agent account: ${accountId}`)
+      return {
+        accountId,
+        publicKey: newPublicKey.toString(),
+        privateKey: newPrivateKey.toString(),
+        balance: initialBalance
+      }
+    } catch (error) {
+      console.error('Failed to create agent account:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Transfer HBAR between accounts
+   */
+  async transferHBAR(fromAccountId: string, toAccountId: string, amount: number, privateKey: string): Promise<string> {
+    if (!this.client) {
+      // Mock mode
+      const mockTxId = `0.0.${Math.floor(Math.random() * 100000)}@${Date.now()}`
+      console.log(`🔧 Mock mode: Transferred ${amount} HBAR from ${fromAccountId} to ${toAccountId}`)
+      return mockTxId
+    }
+
+    try {
+      const fromPrivateKey = PrivateKey.fromString(privateKey)
+      
+      const transaction = new TransferTransaction()
+        .addHbarTransfer(AccountId.fromString(fromAccountId), new Hbar(-amount))
+        .addHbarTransfer(AccountId.fromString(toAccountId), new Hbar(amount))
+
+      const response = await transaction.execute(this.client)
+      const receipt = await response.getReceipt(this.client)
+      
+      const transactionId = response.transactionId.toString()
+      console.log(`✅ Transferred ${amount} HBAR from ${fromAccountId} to ${toAccountId}`)
+      return transactionId
+    } catch (error) {
+      console.error('Failed to transfer HBAR:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Check if the service is properly configured
+   */
+  isConfigured(): boolean {
+    return this.client !== null
+  }
+
+  /**
+   * Get the current operator account ID
+   */
+  getOperatorAccountId(): string | null {
+    return this.operatorAccountId
+  }
+
+  /**
+   * Close the Hedera client
    */
   close() {
-    this.client.close()
+    if (this.client) {
+      this.client.close()
+      this.client = null
+    }
   }
 }
 
 // Singleton instance
-let hederaService: HederaAgentService | null = null
+let hederaServiceInstance: HederaAgentService | null = null
 
 export function getHederaService(): HederaAgentService {
-  if (!hederaService) {
-    hederaService = new HederaAgentService()
+  if (!hederaServiceInstance) {
+    hederaServiceInstance = new HederaAgentService()
   }
-  return hederaService
+  return hederaServiceInstance
 }
+
+// Export the class for testing
+export { HederaAgentService }

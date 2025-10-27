@@ -75,16 +75,6 @@ export interface Agent {
   featured?: boolean
 }
 
-export interface JudgmentRequest {
-  id: string
-  content: string
-  criteria?: string[]
-  selectedAgents: Agent[]
-  requestedBy: string
-  createdAt: number
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-}
-
 export interface JudgmentResult {
   id: string
   requestId: string

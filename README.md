@@ -336,7 +336,7 @@ Task → Independent Scores → HCS Discussion → Consensus
 ```
 jurybox-io/
 ├── app/                      # Next.js app directory
-│   ├── create-agent/        # Agent creation page
+│   ├── create-judge/        # Agent creation page
 │   ├── marketplace/         # Agent marketplace
 │   ├── dashboard/           # User dashboard
 │   └── submit/              # Judgment submission

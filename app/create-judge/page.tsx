@@ -41,10 +41,7 @@ export default function CreateJudgePage() {
     color: "purple" as "purple" | "cyan" | "gold",
     walletAddress: "",
     pricePerJudgment: 0.05,
-    modelProvider: "openai" as "openai" | "anthropic" | "groq" | "ollama",
-    modelName: "gpt-4",
     systemPrompt: "",
-    temperature: 0.7,
   })
 
   // Set wallet address from connected wallet
@@ -154,10 +151,10 @@ export default function CreateJudgePage() {
           avatar: formData.image || undefined,
           themeColor: colorMap[formData.color],
           specialties,
-          modelProvider: formData.modelProvider,
-          modelName: formData.modelName,
+          modelProvider: "eigenai",
+          modelName: "eigenai-deterministic",
           systemPrompt: formData.systemPrompt,
-          temperature: formData.temperature,
+          temperature: 0,
           price: formData.pricePerJudgment,
           walletAddress: formData.walletAddress,
         }),
@@ -416,64 +413,28 @@ export default function CreateJudgePage() {
 
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="modelProvider">Model Provider</Label>
-                  <select
-                    id="modelProvider"
-                    value={formData.modelProvider}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        modelProvider: e.target.value as typeof formData.modelProvider,
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-md border border-border bg-background"
-                  >
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic Claude</option>
-                    <option value="groq">Groq (Free)</option>
-                    <option value="ollama">Ollama (Local)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="modelName">Model Name</Label>
-                  <Input
-                    id="modelName"
-                    value={formData.modelName}
-                    onChange={(e) => setFormData({ ...formData, modelName: e.target.value })}
-                    placeholder="e.g., gpt-4, claude-3-opus"
-                    required
-                  />
-                </div>
-
-                <div>
                   <Label htmlFor="systemPrompt">System Prompt</Label>
                   <Textarea
                     id="systemPrompt"
                     value={formData.systemPrompt}
                     onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
                     placeholder="Define your agent's personality, expertise, and judging criteria..."
-                    rows={6}
+                    rows={8}
                     required
                   />
+                  <p className="text-xs text-foreground/60 mt-2">
+                    This prompt defines your judge's expertise, personality, and evaluation criteria.
+                  </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="temperature">Temperature: {formData.temperature}</Label>
-                  <input
-                    id="temperature"
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={formData.temperature}
-                    onChange={(e) => setFormData({ ...formData, temperature: parseFloat(e.target.value) })}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-foreground/60 mt-1">
-                    <span>Deterministic</span>
-                    <span>Creative</span>
-                  </div>
+                <div className="p-4 bg-brand-purple/10 border border-brand-purple/30 rounded-lg">
+                  <p className="text-sm text-foreground/80">
+                    <strong>🤖 Powered by Eigen AI</strong>
+                    <br />• Deterministic evaluations (Temperature = 0)
+                    <br />• Reproducible and consistent judgments
+                    <br />• Enterprise-grade AI infrastructure
+                    <br />• Automatic model optimization
+                  </p>
                 </div>
               </div>
             </Card>

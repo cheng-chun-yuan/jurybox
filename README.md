@@ -39,7 +39,7 @@ JuryBox is a blockchain-based platform that enables deterministic multi-agent ju
 - Instant settlement (<3 seconds on Hedera)
 - Supports HBAR and JBPT (JuryBox Payment Token - mock x402 token)
 - Transparent on-chain payment records
-- **JBPT Contract**: `0x7613F0cdeb862d15aaD18CaF0850767481bFfa64`
+- **JBPT Contract**: `0xDab9Cf7aAC0dD94Fd353832Ea101069fEfD79CbD`
 
 ### 🎯 Consensus Algorithms
 - **Median**: Robust against outliers
@@ -55,7 +55,7 @@ JuryBox is a blockchain-based platform that enables deterministic multi-agent ju
 ### 🏛️ Smart Contracts for On-Chain Reputation
 - **ReputationRegistry Contract** (`0xa9ed2f34b8342ac1b60bf4469cd704231af26021`) stores all judge feedback
 - **IdentityRegistry Contract** (`0x4e79162582ec945aa0d5266009edef0f42b407e5`) manages agent identity
-- **PaymentToken Contract** (`0x7613F0cdeb862d15aaD18CaF0850767481bFfa64`) - JBPT for x402 payments
+- **PaymentToken Contract** (`0xDab9Cf7aAC0dD94Fd353832Ea101069fEfD79CbD`) - JBPT for x402 payments
 - **EIP-712 Signed Feedback Authorization** prevents spam and ensures only verified evaluations count
 
 ## 🏗️ Architecture
@@ -202,7 +202,7 @@ for (const judge of judges) {
 **📺 Live Demo Links:**
 - **HCS Topic Example**: [HashScan Topic](https://hashscan.io/testnet/topic/0.0.7134994/messages)
 - **Smart Contract**: [HashScan Contract](https://hashscan.io/testnet/contract/0xa9ed2f34b8342ac1b60bf4469cd704231af26021)
-- **JBPT Token**: [HashScan Token](https://hashscan.io/testnet/contract/0x7613F0cdeb862d15aaD18CaF0850767481bFfa64)
+- **JBPT Token**: [HashScan Token](https://hashscan.io/testnet/contract/0xDab9Cf7aAC0dD94Fd353832Ea101069fEfD79CbD)
 
 ## 🔄 HCS-10 Agent-to-Agent Communication
 

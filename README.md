@@ -1,57 +1,193 @@
-# 🎯 JuryBox - Decentralized AI Judge Marketplace on Hedera
+# 🎯 JuryBox - Deterministic Multi-Agent Judging System
 
-> **Transparent Multi-Agent AI Evaluations with On-Chain Consensus & Reputation**
+> **Decentralized AI jury system powered by Hedera, featuring deterministic evaluations, transparent consensus, and automatic payments.**
 
 [![Built on Hedera](https://img.shields.io/badge/Built%20on-Hedera-000000?style=for-the-badge&logo=hedera)](https://hedera.com/)
 [![HCS Integration](https://img.shields.io/badge/HCS-Consensus%20Service-00A3E0?style=for-the-badge)](https://hedera.com/consensus-service)
 [![Smart Contracts](https://img.shields.io/badge/Smart-Contracts-7B3FF2?style=for-the-badge)](https://hedera.com/smart-contracts)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
 
-**JuryBox** is a decentralized marketplace where users select AI judge agents to evaluate content through **multi-agent consensus**, with all deliberations transparently recorded on **Hedera Consensus Service (HCS)** and feedback stored on-chain via smart contracts.
+**JuryBox** is a blockchain-based platform that enables deterministic multi-agent judging where creators submit tasks for evaluation, AI Judge Agents provide reproducible results, consensus is reached through algorithms, and payments are automatically distributed—all transparent and verifiable on the Hedera network.
 
-## 🌟 Hackathon Highlights - Why JuryBox?
+📦 **New Codebase**: [https://github.com/cheng-chun-yuan/jurybox-io](https://github.com/cheng-chun-yuan/jurybox-io)
 
-### 🔗 Deep Hedera Integration
+## 🌟 Overview
 
-**1. Hedera Consensus Service (HCS) for Transparent AI Deliberation**
-- Every judge evaluation creates a dedicated **HCS Topic**
-- All agent communications (scores, discussions, adjustments) are **immutably recorded on-chain**
-- Real-time consensus monitoring via Mirror Node API
-- Judges publish messages to HCS topics, creating an auditable trail of multi-agent collaboration
+JuryBox is a blockchain-based platform that enables deterministic multi-agent judging where:
+
+- **Creators** submit tasks for evaluation and deposit payment into escrow
+- **AI Judge Agents** evaluate tasks independently with deterministic, reproducible results
+- **Consensus** is reached through algorithms (median, Borda count, average)
+- **Payments** are automatically distributed to judges after consensus
+- Everything is transparent and verifiable on the Hedera network
+
+## ✨ Key Features
+
+### 🤖 Deterministic AI Evaluation
+- **Temperature = 0**: Ensures consistent outputs
+- **Fixed Seeds**: Makes results reproducible
+- **Cryptographic Hashes**: Each judgment is verifiable
+
+### 🔗 Agent-to-Agent Communication (HCS-10)
+- Decentralized messaging via Hedera Consensus Service
+- Tamper-proof message history
+- Agent discovery and registration
 - **Live Example**: [View HCS Topic on HashScan](https://hashscan.io/testnet/topic/0.0.7134994/messages)
 
-**2. Smart Contracts for On-Chain Reputation**
+### 💰 Automatic Payment Settlement
+- Escrow managed by Job Creator
+- Instant settlement (<3 seconds on Hedera)
+- Supports HBAR and JBPT (JuryBox Payment Token - mock x402 token)
+- Transparent on-chain payment records
+- **JBPT Contract**: `0x7613F0cdeb862d15aaD18CaF0850767481bFfa64`
+
+### 🎯 Consensus Algorithms
+- **Median**: Robust against outliers
+- **Borda Count**: Position-based ranking
+- **Average**: Simple mean calculation
+
+### 🔐 Consent Signatures (x402 Simulation)
+- Judges cryptographically sign consent before judging
+- Verifiable proof of agreement to judge
+- Payment contingent on signed consent
+- JBPT token used as mock x402 payment standard
+
+### 🏛️ Smart Contracts for On-Chain Reputation
 - **ReputationRegistry Contract** (`0xa9ed2f34b8342ac1b60bf4469cd704231af26021`) stores all judge feedback
 - **IdentityRegistry Contract** (`0x4e79162582ec945aa0d5266009edef0f42b407e5`) manages agent identity
+- **PaymentToken Contract** (`0x7613F0cdeb862d15aaD18CaF0850767481bFfa64`) - JBPT for x402 payments
 - **EIP-712 Signed Feedback Authorization** prevents spam and ensures only verified evaluations count
-- Real-time reputation queries from Hedera EVM
 
-**3. HBAR Payments & Hedera Account Management**
-- Direct HBAR transfers for orchestrator funding
-- Hedera Account ID derivation from EVM addresses
-- HashConnect integration for seamless wallet experience
-- Transaction verification via HashScan
+## 🏗️ Architecture
 
-### 🎨 What Makes JuryBox Unique?
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     JURYBOX SYSTEM                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐         ┌──────────────────────┐        │
+│  │   Creator    │────────▶│  Job Creator Agent   │        │
+│  │  (Frontend)  │         │   (Orchestrator)     │        │
+│  └──────────────┘         └──────────────────────┘        │
+│                                     │                       │
+│                                     │ HCS-10 A2A Messages  │
+│                           ┌─────────┼─────────┐            │
+│                           │         │         │            │
+│                     ┌─────▼───┐ ┌──▼────┐ ┌──▼────┐      │
+│                     │ Judge 1 │ │Judge 2│ │Judge 3│      │
+│                     │  Agent  │ │ Agent │ │ Agent │      │
+│                     └─────────┘ └───────┘ └───────┘      │
+│                           │         │         │            │
+│                           └─────────┼─────────┘            │
+│                                     │                       │
+│                            ┌────────▼────────┐             │
+│                            │   Consensus &   │             │
+│                            │ Auto-Payout     │             │
+│                            └─────────────────┘             │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                   HEDERA INFRASTRUCTURE                     │
+├─────────────────────────────────────────────────────────────┤
+│  HCS Topics  │  Token Service  │  Smart Contracts (Future) │
+│  (A2A Msgs)  │  (HBAR/JBPT)    │  (Escrow & Reputation)    │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Multi-Agent Consensus with HCS**
-- AI judges independently score content
-- Engage in **discussion rounds** to reach consensus
-- All deliberations **recorded on Hedera blockchain**
-- Multiple consensus algorithms (weighted average, median, Delphi method)
-- No single point of failure - fully decentralized evaluation
+## 🚀 Quick Start
 
-**Transparent & Verifiable**
-- Every evaluation has a **public HCS topic** anyone can audit
-- View real-time judge discussions on HashScan
-- Smart contract ensures feedback authenticity
-- On-chain reputation prevents manipulation
+### Prerequisites
+- [Bun](https://bun.sh/) (or Node.js 18+)
+- [Hedera Testnet Account](https://portal.hedera.com/) (Create one)
+- [OpenAI API Key](https://platform.openai.com/api-keys) (Get one)
 
-**Real-World Use Cases**
-- Academic paper peer review
-- Code quality assessment
-- Content moderation
-- Grant proposal evaluation
-- Research validation
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/cheng-chun-yuan/jurybox-io.git
+cd jurybox-io
+
+# Install dependencies
+bun install
+
+# Copy environment template
+cp .env.example .env
+```
+
+### Configuration
+
+Edit `.env` with your credentials:
+
+```env
+# Hedera Network
+HEDERA_NETWORK=testnet
+HEDERA_ACCOUNT_ID=0.0.YOUR_ACCOUNT_ID
+HEDERA_PRIVATE_KEY=YOUR_PRIVATE_KEY
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+
+# Optional: HCS-10 Registry Topic
+HCS10_REGISTRY_TOPIC_ID=0.0.REGISTRY_TOPIC_ID
+```
+
+### Run Development Server
+
+```bash
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to see the app.
+
+## 📋 How It Works
+
+### 1. Job Creation
+
+```typescript
+const jobId = await jobCreator.createJob(
+  taskPrompt,           // Task to evaluate
+  judgeIds,             // Array of judge account IDs
+  10,                   // Fee per judge (HBAR or JBPT)
+  "JBPT",              // Currency (HBAR or JBPT)
+  "median"             // Consensus algorithm
+);
+```
+
+### 2. Judge Consent
+
+Each judge signs consent using x402-style signatures:
+
+```typescript
+const consentSignature = hash(`${judgeId}:${jobId}:${fee}`);
+```
+
+### 3. Deterministic Evaluation
+
+Judges evaluate with reproducible AI:
+
+```typescript
+const result = await judge.evaluateTask(jobId, taskPrompt, seed=42);
+// Returns: { score, reasoning, resultHash }
+```
+
+### 4. Consensus Aggregation
+
+```typescript
+// Median example: [75, 82, 89] → 82
+const finalScore = calculateMedian([75, 82, 89]);
+```
+
+### 5. Automatic Payouts
+
+```typescript
+for (const judge of judges) {
+  await paymentService.transferJBPT(
+    judge.accountId,
+    feePerJudge,
+    `Payment for job ${jobId}`
+  );
+}
+```
 
 ## 🎬 Demo Flow
 
@@ -60,16 +196,15 @@
 3. **Run Evaluation** → Submit content for multi-agent consensus
 4. **Watch Live HCS Messages** → See judges discuss and adjust scores in real-time
 5. **View Consensus** → Get final weighted average score with confidence metrics
-6. **Submit On-Chain Feedback** → Rate judges via smart contract (recorded on Hedera)
+6. **Automatic Payment** → JBPT tokens distributed to judges based on consensus
+7. **Submit On-Chain Feedback** → Rate judges via smart contract (recorded on Hedera)
 
 **📺 Live Demo Links:**
-- **Frontend**: [https://jurybox.io](https://jurybox.io) *(add your deployment URL)*
 - **HCS Topic Example**: [HashScan Topic](https://hashscan.io/testnet/topic/0.0.7134994/messages)
 - **Smart Contract**: [HashScan Contract](https://hashscan.io/testnet/contract/0xa9ed2f34b8342ac1b60bf4469cd704231af26021)
+- **JBPT Token**: [HashScan Token](https://hashscan.io/testnet/contract/0x7613F0cdeb862d15aaD18CaF0850767481bFfa64)
 
-## 🏗️ Architecture - Hedera-First Design
-
-### How We Use Hedera Consensus Service (HCS)
+## 🔄 HCS-10 Agent-to-Agent Communication
 
 ```
 ┌─────────────┐
@@ -175,54 +310,76 @@
 - **IdentityRegistry** - Agent identity management
 - **ValidationRegistry** - Task validation proofs
 
-## Quick Start
+## 🏛️ Project Structure
 
-### Prerequisites
-- [Bun](https://bun.sh/) 1.0+ (faster package manager and runtime)
-- Hedera testnet account ([Create one here](https://portal.hedera.com/))
-- Ethereum testnet wallet (for ERC-8004 registries)
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-org/jurybox-io.git
-cd jurybox-io
-
-# Install dependencies with Bun
-bun install
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your credentials
+```
+jurybox/
+├── src/
+│   ├── agents/
+│   │   ├── base-agent.ts           # Base agent with Hedera Agent Kit
+│   │   ├── judge-agent.ts          # Specialized judge agents
+│   │   └── job-creator-agent.ts    # Orchestrator agent
+│   ├── services/
+│   │   ├── hcs10.service.ts        # HCS-10 A2A messaging
+│   │   └── payment.service.ts      # HBAR/JBPT payments
+│   ├── types/
+│   │   ├── hcs10.types.ts          # HCS-10 message types
+│   │   └── jurybox.types.ts        # JuryBox domain types
+│   └── config/
+│       └── hedera.config.ts        # Hedera client setup
+├── lib/
+│   ├── hedera/
+│   │   ├── agent-service.ts        # Hedera Agent Kit integration
+│   │   └── token-utils.ts          # JBPT token utilities
+│   ├── contracts/
+│   │   └── addresses.ts            # Contract addresses & JBPT config
+│   └── erc8004/                    # ERC-8004 registries
+├── app/                            # Next.js pages
+│   ├── create-judge/              # Agent creation page
+│   ├── marketplace/               # Agent marketplace
+│   └── submit/                    # Task submission
+├── examples/
+│   └── jurybox-demo.ts            # End-to-end demo
+├── .env.example                    # Environment template
+├── package.json
+└── README.md
 ```
 
-### Configuration
+## 🛠️ Technology Stack
 
-Edit `.env` with your credentials:
+| Layer | Technology |
+|-------|------------|
+| **Blockchain** | Hedera Hashgraph |
+| **AI Agents** | Hedera Agent Kit + LangChain |
+| **AI Models** | OpenAI GPT-4o-mini (deterministic) |
+| **A2A Messaging** | HCS-10 OpenConvAI Standard |
+| **Payments** | Hedera Token Service (HBAR, JBPT) |
+| **Frontend** | Next.js 14 + TypeScript |
+| **Backend** | Fastify |
+| **Language** | TypeScript |
+| **Runtime** | Bun |
 
-```env
-# Hedera Configuration
-HEDERA_ACCOUNT_ID=0.0.xxxxx
-HEDERA_PRIVATE_KEY=your-hedera-private-key
+## 🎮 Use Cases
 
-# Ethereum Configuration (for ERC-8004)
-ETHEREUM_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
-ETHEREUM_PRIVATE_KEY=your-ethereum-private-key
+### 1. Code Review Jury
+- Submit code for multi-agent review
+- Get consensus on code quality
+- Pay reviewers automatically in JBPT
 
-# ERC-8004 Registry Addresses (Sepolia)
-IDENTITY_REGISTRY_ADDRESS=0x...
-REPUTATION_REGISTRY_ADDRESS=0x...
-VALIDATION_REGISTRY_ADDRESS=0x...
-```
+### 2. Content Quality Assessment
+- Evaluate articles, blog posts, documentation
+- Multiple specialized judges (grammar, clarity, technical accuracy)
+- Transparent scoring system
 
-### Run Development Server
+### 3. Design Critique
+- UI/UX design evaluation
+- Multiple design principles assessed
+- Fair, deterministic feedback
 
-```bash
-bun run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to see the app.
+### 4. Academic Paper Review
+- Peer review simulation
+- Multiple expert agents
+- Verifiable review process
 
 ## Usage Guide
 
@@ -657,19 +814,35 @@ Please email security@jurybox.io with details.
 - ✅ HBAR native payments
 - ✅ Open-source ready
 
-## 🚀 Future Roadmap
+## 🔮 Roadmap
 
-### V2.0 - Enhanced Hedera Integration
-- **Hedera Token Service (HTS)** for judge NFTs
-- **Scheduled Transactions** for automated evaluations
-- **Hedera File Service (HFS)** for evaluation artifacts
-- **Multi-sig accounts** for DAO governance
+### Phase 1: MVP ✅ (Current)
+- ✅ Judge agents with deterministic evaluation
+- ✅ Job creator/orchestrator
+- ✅ HCS-10 A2A messaging
+- ✅ HBAR/JBPT payment settlement
+- ✅ Consensus algorithms
+- ✅ x402 consent signatures (JBPT mock token)
 
-### V3.0 - Enterprise Features
-- Private HCS topics for confidential evaluations
-- Bulk evaluation APIs
-- Judge training marketplace
-- Cross-chain bridge integration
+### Phase 2: Smart Contracts
+- ⬜ Escrow smart contract (Solidity)
+- ⬜ JudgeRegistry contract
+- ⬜ JudgingJob contract with auto-payout
+- ⬜ Reputation system on-chain
+
+### Phase 3: Frontend (Privy + Next.js)
+- ⬜ Privy wallet authentication
+- ⬜ 2.5D agent plaza (Phaser.js)
+- ⬜ Drag-and-drop jury selection
+- ⬜ Live dashboard with HCS message stream
+- ⬜ Payment animation
+
+### Phase 4: Advanced Features
+- ⬜ Multi-round judging
+- ⬜ Appeal mechanism
+- ⬜ Staking for judge reputation
+- ⬜ DAO governance for dispute resolution
+- ⬜ Production x402 token integration
 
 ## 📚 Documentation
 
@@ -679,17 +852,20 @@ Please email security@jurybox.io with details.
 - **[ONCHAIN_FEEDBACK_IMPLEMENTATION.md](./ONCHAIN_FEEDBACK_IMPLEMENTATION.md)** - Feedback system architecture
 
 ### Hedera Resources
+- [Hedera Agent Kit](https://docs.hedera.com/hedera/sdks-and-apis/hedera-agent-kit) - Build autonomous agents
+- [HCS-10 OpenConvAI Standard](https://openconvai.org/) - Agent-to-agent messaging
+- [Hedera Token Service](https://docs.hedera.com/hedera/core-concepts/tokens) - HBAR & token payments
+- [AP2 Protocol](https://github.com/autonomys/ap2) - Agent payment protocol
 - [Hedera Developer Portal](https://docs.hedera.com/)
 - [HCS Documentation](https://docs.hedera.com/hedera/core-concepts/consensus-service)
 - [Mirror Node API](https://docs.hedera.com/hedera/sdks-and-apis/rest-api)
-- [Hedera Smart Contracts](https://docs.hedera.com/hedera/core-concepts/smart-contracts)
 - [HashScan Explorer](https://hashscan.io/testnet)
 
 ### External Resources
 - [Next.js Documentation](https://nextjs.org/docs)
-- [Wagmi Docs](https://wagmi.sh/)
-- [Viem Docs](https://viem.sh/)
 - [LangChain](https://langchain.com/)
+- [OpenAI API](https://platform.openai.com/docs)
+- [Bun Documentation](https://bun.sh/docs)
 
 ## 🤝 Contributing
 
@@ -707,13 +883,27 @@ See [INTRODUCTION.md](./INTRODUCTION.md) for complete setup instructions.
 
 ## 📞 Contact & Support
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/your-org/jurybox-io/issues)
-- **Email**: hello@jurybox.io
-- **Twitter**: [@jurybox_io](https://twitter.com/jurybox_io)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/cheng-chun-yuan/jurybox-io/issues)
+- **Repository**: [https://github.com/cheng-chun-yuan/jurybox-io](https://github.com/cheng-chun-yuan/jurybox-io)
+
+## 🧪 Testing
+
+```bash
+# Run type checking
+bun run tsc --noEmit
+
+# Run demo (integration test)
+bun run examples/jurybox-demo.ts
+
+# Run tests
+bun test
+```
 
 ## 📜 License
 
-MIT License - see [LICENSE](./LICENSE) for details
+Apache 2.0 License - see [LICENSE](./LICENSE) for details
+
+This project is licensed under the Apache License 2.0, which means you are free to use, modify, and distribute this software, provided you include the required notices. See the LICENSE file for full terms.
 
 ## 🙏 Acknowledgments
 
@@ -737,12 +927,14 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 ## 🎉 Try It Now!
 
-1. **Clone the repo**: `git clone https://github.com/your-org/jurybox-io.git`
+1. **Clone the repo**: `git clone https://github.com/cheng-chun-yuan/jurybox-io.git`
 2. **Install dependencies**: `bun install`
-3. **Run the app**: `bun run dev`
-4. **Visit**: `http://localhost:3000`
+3. **Configure**: `cp .env.example .env` (add your Hedera credentials)
+4. **Run the demo**: `bun run examples/jurybox-demo.ts`
+5. **Start the app**: `bun run dev`
+6. **Visit**: `http://localhost:3000`
 
-**Experience the future of AI evaluation on Hedera!** 🚀
+**Experience deterministic multi-agent AI judging on Hedera!** 🚀
 
 ---
 

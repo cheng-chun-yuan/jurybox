@@ -1,13 +1,9 @@
 'use client'
 
 import { Filter } from 'lucide-react'
-import { JudgeCard } from '@/components/judge-card'
+import { JudgeCard } from '@/components/marketplace/judge-card'
 import { Badge } from '@/components/ui/badge'
-
-interface Judge {
-  id: number
-  [key: string]: any
-}
+import type { Judge } from '@/types/judge'
 
 interface JudgeGridProps {
   judges: Judge[]

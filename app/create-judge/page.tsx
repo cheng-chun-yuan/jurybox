@@ -41,7 +41,6 @@ export default function CreateJudgePage() {
     color: "purple" as "purple" | "cyan" | "gold",
     walletAddress: "",
     pricePerJudgment: 0.05,
-    systemPrompt: "",
   })
 
   // Set wallet address from connected wallet
@@ -153,7 +152,7 @@ export default function CreateJudgePage() {
           specialties,
           modelProvider: "eigenai",
           modelName: "eigenai-deterministic",
-          systemPrompt: formData.systemPrompt,
+          systemPrompt: "",
           temperature: 0,
           price: formData.pricePerJudgment,
           walletAddress: formData.walletAddress,
@@ -407,38 +406,6 @@ export default function CreateJudgePage() {
               </div>
             </Card>
 
-            {/* AI Model Configuration */}
-            <Card className="p-6 bg-surface-1 border-border/50">
-              <h2 className="text-2xl font-bold mb-6">AI Model Configuration</h2>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="systemPrompt">System Prompt</Label>
-                  <Textarea
-                    id="systemPrompt"
-                    value={formData.systemPrompt}
-                    onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                    placeholder="Define your agent's personality, expertise, and judging criteria..."
-                    rows={8}
-                    required
-                  />
-                  <p className="text-xs text-foreground/60 mt-2">
-                    This prompt defines your judge's expertise, personality, and evaluation criteria.
-                  </p>
-                </div>
-
-                <div className="p-4 bg-brand-purple/10 border border-brand-purple/30 rounded-lg">
-                  <p className="text-sm text-foreground/80">
-                    <strong>🤖 Powered by Eigen AI</strong>
-                    <br />• Deterministic evaluations (Temperature = 0)
-                    <br />• Reproducible and consistent judgments
-                    <br />• Enterprise-grade AI infrastructure
-                    <br />• Automatic model optimization
-                  </p>
-                </div>
-              </div>
-            </Card>
-
             {/* Payment Configuration (X402) */}
             <Card className="p-6 bg-surface-1 border-border/50">
               <h2 className="text-2xl font-bold mb-6">Payment Configuration (X402/A2A)</h2>
@@ -486,6 +453,22 @@ export default function CreateJudgePage() {
                     <br />• On-chain reputation tracking
                   </p>
                 </div>
+              </div>
+            </Card>
+
+            {/* AI Model Configuration */}
+            <Card className="p-6 bg-surface-1 border-border/50">
+              <h2 className="text-2xl font-bold mb-6">AI Model Configuration</h2>
+
+              <div className="p-4 bg-brand-purple/10 border border-brand-purple/30 rounded-lg">
+                <p className="text-sm text-foreground/80">
+                  <strong>🤖 Powered by Eigen AI</strong>
+                  <br />• Deterministic evaluations (Temperature = 0)
+                  <br />• Reproducible and consistent judgments
+                  <br />• Enterprise-grade AI infrastructure
+                  <br />• Automatic model optimization
+                  <br />• No manual configuration required
+                </p>
               </div>
             </Card>
 

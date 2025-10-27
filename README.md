@@ -721,23 +721,6 @@ bun run build
 bun start
 ```
 
-## Deployment
-
-### Vercel (Recommended)
-
-```bash
-vercel --prod
-```
-
-Configure environment variables in Vercel dashboard.
-
-### Docker
-
-```bash
-docker build -t jurybox .
-docker run -p 3000:3000 jurybox
-```
-
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
@@ -814,36 +797,6 @@ Please email security@jurybox.io with details.
 - ✅ HBAR native payments
 - ✅ Open-source ready
 
-## 🔮 Roadmap
-
-### Phase 1: MVP ✅ (Current)
-- ✅ Judge agents with deterministic evaluation
-- ✅ Job creator/orchestrator
-- ✅ HCS-10 A2A messaging
-- ✅ HBAR/JBPT payment settlement
-- ✅ Consensus algorithms
-- ✅ x402 consent signatures (JBPT mock token)
-
-### Phase 2: Smart Contracts
-- ⬜ Escrow smart contract (Solidity)
-- ⬜ JudgeRegistry contract
-- ⬜ JudgingJob contract with auto-payout
-- ⬜ Reputation system on-chain
-
-### Phase 3: Frontend (Privy + Next.js)
-- ⬜ Privy wallet authentication
-- ⬜ 2.5D agent plaza (Phaser.js)
-- ⬜ Drag-and-drop jury selection
-- ⬜ Live dashboard with HCS message stream
-- ⬜ Payment animation
-
-### Phase 4: Advanced Features
-- ⬜ Multi-round judging
-- ⬜ Appeal mechanism
-- ⬜ Staking for judge reputation
-- ⬜ DAO governance for dispute resolution
-- ⬜ Production x402 token integration
-
 ## 📚 Documentation
 
 ### Project Documentation
@@ -867,44 +820,6 @@ Please email security@jurybox.io with details.
 - [OpenAI API](https://platform.openai.com/docs)
 - [Bun Documentation](https://bun.sh/docs)
 
-## 🤝 Contributing
-
-We welcome contributions! This is an open-source hackathon project.
-
-### How to Contribute
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Setup
-See [INTRODUCTION.md](./INTRODUCTION.md) for complete setup instructions.
-
-## 📞 Contact & Support
-
-- **GitHub Issues**: [Report bugs or request features](https://github.com/cheng-chun-yuan/jurybox-io/issues)
-- **Repository**: [https://github.com/cheng-chun-yuan/jurybox-io](https://github.com/cheng-chun-yuan/jurybox-io)
-
-## 🧪 Testing
-
-```bash
-# Run type checking
-bun run tsc --noEmit
-
-# Run demo (integration test)
-bun run examples/jurybox-demo.ts
-
-# Run tests
-bun test
-```
-
-## 📜 License
-
-Apache 2.0 License - see [LICENSE](./LICENSE) for details
-
-This project is licensed under the Apache License 2.0, which means you are free to use, modify, and distribute this software, provided you include the required notices. See the LICENSE file for full terms.
-
 ## 🙏 Acknowledgments
 
 **Built on Hedera:**
@@ -917,11 +832,6 @@ This project is licensed under the Apache License 2.0, which means you are free 
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS
 - [LangChain](https://langchain.com/) - AI orchestration
 - [OpenAI](https://openai.com/) & [Anthropic](https://anthropic.com/) - LLM providers
-
-**Special Thanks:**
-- Hedera team for the amazing developer documentation
-- HashScan for the blockchain explorer
-- The Web3 community for open-source tooling
 
 ---
 
